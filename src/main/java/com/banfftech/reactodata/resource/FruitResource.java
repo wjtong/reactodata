@@ -1,10 +1,15 @@
 package com.banfftech.reactodata.resource;
 
+import com.banfftech.reactodata.model.Fruit;
 import io.quarkus.runtime.StartupEvent;
+import io.smallrye.mutiny.Multi;
 import io.vertx.mutiny.pgclient.PgPool;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Path("/fruits")
@@ -28,5 +33,11 @@ public class FruitResource {
                 .flatMap(r -> client.query("INSERT INTO fruits (name) VALUES ('Pear')").execute())
                 .flatMap(r -> client.query("INSERT INTO fruits (name) VALUES ('Apple')").execute())
                 .await().indefinitely();
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Multi<Fruit> get() {
+        return Fruit.findAll(client);
     }
 }

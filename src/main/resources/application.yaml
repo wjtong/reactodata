@@ -6,11 +6,8 @@ quarkus:
     db-kind: postgresql
     username: quarkusodata
     password: quarkusodata
-    jdbc:
-      url: jdbc:postgresql://localhost:5432/quarkusodata
-  hibernate-orm:
-    database:
-      generation: drop-and-create
+    reactive:
+      url: postgresql://localhost:5432/reactodata
 reactodata:
   schema:
     create: true
