@@ -4,9 +4,7 @@ import com.banfftech.reactodata.csdl.QuarkCsdlEntitySet;
 import com.banfftech.reactodata.csdl.QuarkCsdlEntityType;
 import com.banfftech.reactodata.csdl.QuarkCsdlNavigationProperty;
 import com.banfftech.reactodata.csdl.QuarkCsdlProperty;
-import com.banfftech.reactodata.edmconfig.EdmConst;
-import com.banfftech.reactodata.edmconfig.EdmEntityType;
-import com.banfftech.reactodata.edmconfig.EdmServiceConfig;
+import com.banfftech.reactodata.edmconfig.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
@@ -62,22 +60,33 @@ public class EdmConfigLoader {
         if (edmEntityType.getQuarkEntity() != null) {
             quarkEntity = edmEntityType.getQuarkEntity();
         }
-        List<CsdlProperty> csdlProperties = new ArrayList<>();
+        List<CsdlProperty> csdlProperties = loadProperties(edmEntityType);
         List<CsdlNavigationProperty> csdlNavigationProperties = new ArrayList<>();
         List<CsdlPropertyRef> csdlPropertyRefs = null;
         boolean filterByDate = false;
         String labelPrefix = entityName;
         boolean hasDerivedEntity = false;
-        boolean autoProperties = edmEntityType.isAutoProperties();; // 缺省从ofbiz的entity定义中获取全部字段
         //是否自动生成所有Property的Label
         List<String> excludeProperties = new ArrayList<>();
         FullQualifiedName fullQualifiedName = new FullQualifiedName(edmServiceConfig.getNameSpace(), entityName);
         boolean hasRelField = false;
         QuarkCsdlEntityType csdlEntityType = createEntityType(fullQualifiedName, quarkEntity,
-                draftEntityName, attrEntityName, attrNumericEntityName, attrDateEntityName, handlerClass, autoProperties,
+                draftEntityName, attrEntityName, attrNumericEntityName, attrDateEntityName, handlerClass, true,
                 csdlProperties, csdlNavigationProperties, csdlPropertyRefs, filterByDate, hasDerivedEntity,
                 excludeProperties, entityConditionStr, labelPrefix, searchOption);
         return csdlEntityType;
+    }
+
+    private List<CsdlProperty> loadProperties(EdmEntityType edmEntityType) {
+        List<EdmProperty> edmProperties = edmEntityType.getProperties();
+        List<CsdlProperty> csdlProperties = new ArrayList<>();
+        for (EdmProperty edmProperty:edmProperties) {
+            QuarkCsdlProperty quarkCsdlProperty = new QuarkCsdlProperty();
+            quarkCsdlProperty.setName(edmProperty.getPropertyName());
+            quarkCsdlProperty.setType(DataMapper.FIELDMAP.get(edmProperty.getPropertyType()).getFullQualifiedName());
+            csdlProperties.add(quarkCsdlProperty);
+        }
+        return csdlProperties;
     }
 
     private static QuarkCsdlEntityType createEntityType(FullQualifiedName entityTypeFqn, String quarkEntity,
@@ -92,21 +101,6 @@ public class EdmConfigLoader {
         String entityName = entityTypeFqn.getName(); // Such as Invoice
         List<CsdlPropertyRef> propertyRefs = csdlPropertyRefs = new ArrayList<>();
         if (autoProperties) {
-            Field[] fields = Class.forName(quarkEntity).getDeclaredFields();
-            for (Field field:fields) {
-                String fieldName = field.getName();
-                if (excludeProperties != null && excludeProperties.contains(fieldName)) {
-                    continue;
-                }
-                CsdlAbstractEdmItem csdlAbstractEdmItem = generatePropertyFromField(field, false);
-                if (csdlAbstractEdmItem != null) {
-                    if (csdlAbstractEdmItem instanceof CsdlProperty) {
-                        csdlProperties.add((CsdlProperty) csdlAbstractEdmItem);
-                    } else if (csdlAbstractEdmItem instanceof CsdlNavigationProperty) {
-                        csdlNavigationProperties.add((CsdlNavigationProperty) csdlAbstractEdmItem);
-                    }
-                }
-            }
             // 添加主键
             QuarkCsdlProperty csdlProperty = new QuarkCsdlProperty();
             csdlProperty.setName("id");

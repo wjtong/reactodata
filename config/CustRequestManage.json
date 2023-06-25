@@ -4,15 +4,15 @@
   "entity-types": [
     {
       "entity-name": "Party",
-      "properties": {
-        "partyName": { "type": "String", "required": true },
-        "partyTypeId": { "type": "String", "required": true },
-        "statusId": { "type": "String" },
-        "createdDate": { "type": "Date" },
-        "createdBy": { "type": "String" },
-        "lastModifiedDate": { "type": "Date" },
-        "lastModifiedBy": { "type": "String" }
-      }
+      "properties": [
+        {"name": "partyName", "type": "name", "required": true },
+        {"name": "partyTypeId", "type": "id", "required": true },
+        {"name": "statusId", "type": "id" },
+        {"name": "createdDate", "type": "date-time" },
+        {"name": "createdBy", "type": "id" },
+        {"name": "lastModifiedDate", "type": "date-time" },
+        {"name": "lastModifiedBy", "type": "id" }
+      ]
     }
   ]
 }
