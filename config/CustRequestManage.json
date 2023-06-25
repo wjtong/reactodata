@@ -1,0 +1,18 @@
+{
+  "service-name": "custRequestManage",
+  "name-space": "com.banfftech",
+  "entity-types": [
+    {
+      "entity-name": "Party",
+      "properties": {
+        "partyName": { "type": "String", "required": true },
+        "partyTypeId": { "type": "String", "required": true },
+        "statusId": { "type": "String" },
+        "createdDate": { "type": "Date" },
+        "createdBy": { "type": "String" },
+        "lastModifiedDate": { "type": "Date" },
+        "lastModifiedBy": { "type": "String" }
+      }
+    }
+  ]
+}
