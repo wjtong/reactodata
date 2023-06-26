@@ -12,6 +12,7 @@ import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Link;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
+import org.apache.olingo.commons.api.edm.EdmReferentialConstraint;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriParameter;
 import org.apache.olingo.server.api.uri.UriResource;
@@ -63,7 +64,12 @@ public class QuarkProcessorImpl implements QuarkProcessor{
     @Override
     public QuarkEntity findRelatedOne(QuarkEntity entity, EdmNavigationProperty edmNavigationProperty,
                                  Map<String, QueryOption> queryOptions) throws ODataApplicationException {
-        List<QuarkEntity> quarkEntities = entityService.findRelatedEntity(entity, edmNavigationProperty.getName(), queryOptions);
+        List<EdmReferentialConstraint> edmReferentialConstraints = edmNavigationProperty.getReferentialConstraints();
+        Map<String, String> mappedProperties = new HashMap<>();
+        for (EdmReferentialConstraint edmReferentialConstraint:edmReferentialConstraints) {
+            mappedProperties.put(edmReferentialConstraint.getPropertyName(), edmReferentialConstraint.getReferencedPropertyName());
+        }
+        List<QuarkEntity> quarkEntities = entityService.findRelatedEntity(entity, mappedProperties, queryOptions);
         if (quarkEntities != null && quarkEntities.size() > 0) {
             EdmEntityType edmEntityType = (EdmEntityType) edmNavigationProperty.getType();
             QuarkEntity relatedEntity = quarkEntities.get(0);

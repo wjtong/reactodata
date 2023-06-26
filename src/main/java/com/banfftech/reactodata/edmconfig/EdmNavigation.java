@@ -9,8 +9,10 @@ public class EdmNavigation {
     private String navigationType;
     @JsonProperty("relation")
     private String relation;
-    @JsonProperty("mapped-by")
-    private String mappedBy;
+    @JsonProperty("property")
+    private String property;
+    @JsonProperty("ref-property")
+    private String refProperty;
 
     public String getPropertyName() {
         return propertyName;
@@ -36,11 +38,19 @@ public class EdmNavigation {
         this.relation = relation;
     }
 
-    public String getMappedBy() {
-        return mappedBy;
+    public String getProperty() {
+        return property;
     }
 
-    public void setMappedBy(String mappedBy) {
-        this.mappedBy = mappedBy;
+    public void setProperty(String property) {
+        this.property = property;
+    }
+
+    public String getRefProperty() {
+        return refProperty;
+    }
+
+    public void setRefProperty(String refProperty) {
+        this.refProperty = refProperty;
     }
 }

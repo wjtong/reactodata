@@ -10,7 +10,7 @@
         {"name": "statusId", "type": "id" }
       ],
       "navigation": [
-        {"name": "person", "type": "Person", "relation": "one-to-one", "mapped-by": "partyId" }
+        {"name": "person", "type": "Person", "relation": "one", "property": "id", "ref-property": "partyId" }
       ]
     },
     {

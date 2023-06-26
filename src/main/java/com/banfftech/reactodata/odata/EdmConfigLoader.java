@@ -9,10 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
-import org.apache.olingo.commons.api.edm.provider.CsdlAbstractEdmItem;
-import org.apache.olingo.commons.api.edm.provider.CsdlNavigationProperty;
-import org.apache.olingo.commons.api.edm.provider.CsdlProperty;
-import org.apache.olingo.commons.api.edm.provider.CsdlPropertyRef;
+import org.apache.olingo.commons.api.edm.provider.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -87,6 +84,16 @@ public class EdmConfigLoader {
             QuarkCsdlNavigationProperty quarkCsdlNavigationProperty = new QuarkCsdlNavigationProperty();
             quarkCsdlNavigationProperty.setName(edmNavigation.getPropertyName());
             quarkCsdlNavigationProperty.setType(new FullQualifiedName(EdmConst.NAMESPACE, edmNavigation.getNavigationType()));
+            if (edmNavigation.getProperty() != null) {
+                CsdlReferentialConstraint csdlReferentialConstraint = new CsdlReferentialConstraint();
+                csdlReferentialConstraint.setProperty(edmNavigation.getProperty());
+                if (edmNavigation.getRefProperty() != null) {
+                    csdlReferentialConstraint.setReferencedProperty(edmNavigation.getRefProperty());
+                } else {
+                    csdlReferentialConstraint.setReferencedProperty(edmNavigation.getProperty());
+                }
+                quarkCsdlNavigationProperty.setReferentialConstraints(List.of(csdlReferentialConstraint));
+            }
             csdlNavigationProperties.add(quarkCsdlNavigationProperty);
         }
         return csdlNavigationProperties;
