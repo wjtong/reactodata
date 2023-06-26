@@ -13,6 +13,8 @@ public class EdmEntityType {
 
     @JsonProperty("properties")
     private List<EdmProperty> properties;
+    @JsonProperty("navigation")
+    private List<EdmNavigation> navigations;
 
     public String getEntityName() {
         return entityName;
@@ -36,5 +38,13 @@ public class EdmEntityType {
 
     public void setProperties(List<EdmProperty> properties) {
         this.properties = properties;
+    }
+
+    public List<EdmNavigation> getNavigations() {
+        return navigations;
+    }
+
+    public void setNavigations(List<EdmNavigation> navigations) {
+        this.navigations = navigations;
     }
 }

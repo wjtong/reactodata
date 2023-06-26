@@ -61,7 +61,7 @@ public class EdmConfigLoader {
             quarkEntity = edmEntityType.getQuarkEntity();
         }
         List<CsdlProperty> csdlProperties = loadProperties(edmEntityType);
-        List<CsdlNavigationProperty> csdlNavigationProperties = new ArrayList<>();
+        List<CsdlNavigationProperty> csdlNavigationProperties = loadNavigation(edmEntityType);
         List<CsdlPropertyRef> csdlPropertyRefs = null;
         boolean filterByDate = false;
         String labelPrefix = entityName;
@@ -75,6 +75,21 @@ public class EdmConfigLoader {
                 csdlProperties, csdlNavigationProperties, csdlPropertyRefs, filterByDate, hasDerivedEntity,
                 excludeProperties, entityConditionStr, labelPrefix, searchOption);
         return csdlEntityType;
+    }
+
+    private List<CsdlNavigationProperty> loadNavigation(EdmEntityType edmEntityType) {
+        List<EdmNavigation> edmNavigations = edmEntityType.getNavigations();
+        if (edmNavigations == null) {
+            return null;
+        }
+        List<CsdlNavigationProperty> csdlNavigationProperties = new ArrayList<>();
+        for (EdmNavigation edmNavigation:edmNavigations) {
+            QuarkCsdlNavigationProperty quarkCsdlNavigationProperty = new QuarkCsdlNavigationProperty();
+            quarkCsdlNavigationProperty.setName(edmNavigation.getPropertyName());
+            quarkCsdlNavigationProperty.setType(new FullQualifiedName(EdmConst.NAMESPACE, edmNavigation.getNavigationType()));
+            csdlNavigationProperties.add(quarkCsdlNavigationProperty);
+        }
+        return csdlNavigationProperties;
     }
 
     private List<CsdlProperty> loadProperties(EdmEntityType edmEntityType) {

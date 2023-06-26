@@ -4,6 +4,8 @@ import com.banfftech.reactodata.Util;
 import com.banfftech.reactodata.odata.processor.EntityCollectionImp;
 import com.banfftech.reactodata.odata.processor.EntityImpl;
 import com.banfftech.reactodata.odata.processor.QuarkProcessor;
+import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
@@ -17,6 +19,7 @@ import org.apache.olingo.commons.api.http.HttpHeader;
 import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.serializer.ODataSerializer;
 import org.apache.olingo.server.api.serializer.SerializerResult;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

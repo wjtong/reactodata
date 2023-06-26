@@ -22,7 +22,7 @@ public class FruitResource {
 
     void config(@Observes StartupEvent ev) {
         if (schemaCreate) {
-            initdb();
+//            initdb();
         }
     }
 

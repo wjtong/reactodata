@@ -151,4 +151,53 @@ public class Util {
         entityCollection.getEntities().clear();
         entityCollection.getEntities().addAll(entitiesPage);
     }
+    public static String dbNameToVarName(String columnName) {
+        if (columnName == null) return null;
+
+        StringBuilder fieldName = new StringBuilder(columnName.length());
+
+        boolean toUpper = false;
+        for (int i=0; i < columnName.length(); i++) {
+            char ch = columnName.charAt(i);
+            if (ch == '_') {
+                toUpper = true;
+            } else if (toUpper) {
+                fieldName.append(Character.toUpperCase(ch));
+                toUpper = false;
+            } else {
+                fieldName.append(Character.toLowerCase(ch));
+            }
+        }
+
+        return fieldName.toString();
+    }
+    public static String dbNameToClassName(String columnName) {
+        return upperFirstChar(dbNameToVarName(columnName));
+    }
+    public static String upperFirstChar(String string) {
+        if (string == null) return null;
+        if (string.length() <= 1) return string.toLowerCase(Locale.getDefault());
+        StringBuilder sb = new StringBuilder(string);
+
+        sb.setCharAt(0, Character.toUpperCase(sb.charAt(0)));
+        return sb.toString();
+    }
+    public static String javaNameToDbName(String javaName) {
+        if (javaName == null) return null;
+        if (javaName.length() <= 0) return "";
+        StringBuilder dbName = new StringBuilder();
+
+        dbName.append(Character.toUpperCase(javaName.charAt(0)));
+        int namePos = 1;
+
+        while (namePos < javaName.length()) {
+            char curChar = javaName.charAt(namePos);
+
+            if (Character.isUpperCase(curChar)) dbName.append('_');
+            dbName.append(Character.toUpperCase(curChar));
+            namePos++;
+        }
+
+        return dbName.toString();
+    }
 }
