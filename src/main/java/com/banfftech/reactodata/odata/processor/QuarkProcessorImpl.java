@@ -64,12 +64,9 @@ public class QuarkProcessorImpl implements QuarkProcessor{
     @Override
     public QuarkEntity findRelatedOne(QuarkEntity entity, EdmNavigationProperty edmNavigationProperty,
                                  Map<String, QueryOption> queryOptions) throws ODataApplicationException {
-        List<EdmReferentialConstraint> edmReferentialConstraints = edmNavigationProperty.getReferentialConstraints();
-        Map<String, String> mappedProperties = new HashMap<>();
-        for (EdmReferentialConstraint edmReferentialConstraint:edmReferentialConstraints) {
-            mappedProperties.put(edmReferentialConstraint.getPropertyName(), edmReferentialConstraint.getReferencedPropertyName());
-        }
-        List<QuarkEntity> quarkEntities = entityService.findRelatedEntity(entity, mappedProperties, queryOptions);
+        Map<String, String> mappedProperties = retrieveMappedProperties(edmNavigationProperty);
+        String targetEntityName = edmNavigationProperty.getType().getName();
+        List<QuarkEntity> quarkEntities = entityService.findRelatedEntity(entity, targetEntityName, mappedProperties, queryOptions);
         if (quarkEntities != null && quarkEntities.size() > 0) {
             EdmEntityType edmEntityType = (EdmEntityType) edmNavigationProperty.getType();
             QuarkEntity relatedEntity = quarkEntities.get(0);
@@ -79,6 +76,14 @@ public class QuarkProcessorImpl implements QuarkProcessor{
             return relatedEntity;
         }
         return null;
+    }
+    private Map<String, String> retrieveMappedProperties(EdmNavigationProperty edmNavigationProperty) {
+        List<EdmReferentialConstraint> edmReferentialConstraints = edmNavigationProperty.getReferentialConstraints();
+        Map<String, String> mappedProperties = new HashMap<>();
+        for (EdmReferentialConstraint edmReferentialConstraint:edmReferentialConstraints) {
+            mappedProperties.put(edmReferentialConstraint.getPropertyName(), edmReferentialConstraint.getReferencedPropertyName());
+        }
+        return mappedProperties;
     }
 
     private void addExpandOption(ExpandOption expandOption, List<Entity> entities,
@@ -176,7 +181,7 @@ public class QuarkProcessorImpl implements QuarkProcessor{
         EntityCollection expandEntityCollection = getExpandData(entity, edmEntityType, edmNavigationProperty, queryOptions);
         if (null != expandEntityCollection && expandEntityCollection.getEntities() != null) {
             Entity expandEntity = expandEntityCollection.getEntities().get(0);
-            expandEntityCollection.setCount(expandEntityCollection.getEntities().size());
+//            expandEntityCollection.setCount(expandEntityCollection.getEntities().size());
             Link link = new Link();
             String navPropName = edmNavigationProperty.getName();
             link.setTitle(navPropName);
@@ -220,26 +225,27 @@ public class QuarkProcessorImpl implements QuarkProcessor{
                                             Map<String, QueryOption> queryOptions)
             throws ODataApplicationException {
         EntityCollection entityCollection = new EntityCollection();
-//        List<GenericEntity> genericEntities = entityService.findRelatedEntity(entity.getGenericEntity(), edmNavigationProperty.getName(), queryOptions);
-//        List<Entity> entities = Util.GenericToEntities(edmNavigationProperty.getType(), genericEntities);
-//        //filter、orderby、page
-//        FilterOption filterOption = queryOptions != null? (FilterOption) queryOptions.get("filterOption"):null;
-//        OrderByOption orderbyOption = queryOptions != null? (OrderByOption) queryOptions.get("orderByOption"):null;
-////        if (filterOption != null || orderbyOption != null) {
-////            Util.filterEntityCollection(entityCollection, filterOption, orderbyOption, edmNavigationProperty.getType(),
-////                    edmProvider, delegator, dispatcher, userLogin, locale, csdlNavigationProperty.isFilterByDate());
-////        }
-////        if (Util.isExtraOrderby(orderbyOption, navCsdlEntityType, delegator)) {
-////            Util.orderbyEntityCollection(entityCollection, orderbyOption, edmNavigationProperty.getType(), edmProvider);
-////        }
-//        entityCollection.setCount(entities.size());
-//        entityCollection.getEntities().addAll(entities);
-//        SkipOption skipOption = queryOptions != null? (SkipOption) queryOptions.get("skipOption"):null;
-//        TopOption topOption = queryOptions != null? (TopOption) queryOptions.get("topOption"):null;
-//        Util.pageEntityCollection(entityCollection, skipOption != null? skipOption.getValue():0, topOption != null? topOption.getValue(): EdmConst.MAX_ROWS);
-//        if (queryOptions != null && queryOptions.get("expandOption") != null) {
-//            addExpandOption((ExpandOption) queryOptions.get("expandOption"), entityCollection.getEntities(), edmNavigationProperty.getType());
+        String targetEntityName = edmNavigationProperty.getType().getName();
+        Map<String, String> mappedProperties = retrieveMappedProperties(edmNavigationProperty);
+        List<QuarkEntity> entities = entityService.findRelatedEntity(entity, targetEntityName, mappedProperties, queryOptions);
+        //filter、orderby、page
+        FilterOption filterOption = queryOptions != null? (FilterOption) queryOptions.get("filterOption"):null;
+        OrderByOption orderbyOption = queryOptions != null? (OrderByOption) queryOptions.get("orderByOption"):null;
+//        if (filterOption != null || orderbyOption != null) {
+//            Util.filterEntityCollection(entityCollection, filterOption, orderbyOption, edmNavigationProperty.getType(),
+//                    edmProvider, delegator, dispatcher, userLogin, locale, csdlNavigationProperty.isFilterByDate());
 //        }
+//        if (Util.isExtraOrderby(orderbyOption, navCsdlEntityType, delegator)) {
+//            Util.orderbyEntityCollection(entityCollection, orderbyOption, edmNavigationProperty.getType(), edmProvider);
+//        }
+        entityCollection.setCount(entities.size());
+        entityCollection.getEntities().addAll(entities);
+        SkipOption skipOption = queryOptions != null? (SkipOption) queryOptions.get("skipOption"):null;
+        TopOption topOption = queryOptions != null? (TopOption) queryOptions.get("topOption"):null;
+        Util.pageEntityCollection(entityCollection, skipOption != null? skipOption.getValue():0, topOption != null? topOption.getValue(): EdmConst.MAX_ROWS);
+        if (queryOptions != null && queryOptions.get("expandOption") != null) {
+            addExpandOption((ExpandOption) queryOptions.get("expandOption"), entityCollection.getEntities(), edmNavigationProperty.getType());
+        }
         return entityCollection;
     }
 

@@ -17,8 +17,8 @@
       "entity-name": "Person",
       "properties": [
         {"name": "partyId", "type": "id", "required": true },
-        {"name": "lastName", "type": "name"},
-        {"name": "fistName", "type": "id"}
+        {"name": "firstName", "type": "name"},
+        {"name": "lastName", "type": "name"}
       ]
     }
   ]

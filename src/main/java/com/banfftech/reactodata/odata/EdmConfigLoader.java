@@ -94,6 +94,12 @@ public class EdmConfigLoader {
                 }
                 quarkCsdlNavigationProperty.setReferentialConstraints(List.of(csdlReferentialConstraint));
             }
+            String relation = edmNavigation.getRelation();
+            if ("one".equals(relation)) {
+                quarkCsdlNavigationProperty.setCollection(false);
+            } else if ("many".equals(relation)) {
+                quarkCsdlNavigationProperty.setCollection(true);
+            }
             csdlNavigationProperties.add(quarkCsdlNavigationProperty);
         }
         return csdlNavigationProperties;

@@ -1,5 +1,6 @@
 package com.banfftech.reactodata.service;
 
+import com.banfftech.reactodata.Util;
 import com.banfftech.reactodata.edmconfig.EdmConst;
 import com.banfftech.reactodata.model.Fruit;
 import com.banfftech.reactodata.odata.QuarkEntity;
@@ -24,10 +25,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 @ApplicationScoped
 public class EntityServiceImpl implements EntityService {
@@ -50,7 +48,6 @@ public class EntityServiceImpl implements EntityService {
             sql = "select * from " + tableName;
         }
         String condition = null;
-        List<QuarkEntity> result = new ArrayList<>();
         try {
             if (filterOption != null) {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
@@ -69,31 +66,46 @@ public class EntityServiceImpl implements EntityService {
     }
 
     @Override
-    public List<QuarkEntity> findRelatedEntity(QuarkEntity entity, Map<String, String> mappedProperties, Map<String, QueryOption> queryOptions) throws ODataApplicationException {
-//        Field[] fields = entity.getClass().getDeclaredFields();
-//        for (Field field:fields) {
-//            String fieldName = field.getName();
-//            if (!fieldName.equals(navigationName)) {
-//                continue;
-//            }
-//            field.setAccessible(true);
-//            Object fieldValue = null;
-//            try {
-//                fieldValue =field.get(entity);
-//            } catch (IllegalAccessException e) {
-//                throw new ODataApplicationException(e.getMessage(),
-//                        HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
-//            }
-//            if (fieldValue == null) {
-//                return null;
-//            }
-//            if (fieldValue instanceof List) {
-//                return (List<GenericEntity>) fieldValue;
-//            } else {
-//                return List.of((GenericEntity) fieldValue);
-//            }
-//        }
-        return null;
+    public List<QuarkEntity> findRelatedEntity(QuarkEntity entity, String targetEntityName, Map<String, String> mappedProperties, Map<String, QueryOption> queryOptions) throws ODataApplicationException {
+        FilterOption filterOption = (FilterOption) queryOptions.get("filterOption");
+        SelectOption selectOption = (SelectOption) queryOptions.get("selectOption");
+        String tableName = Util.javaNameToDbName(targetEntityName);
+        OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor();
+        String sql;
+        if (selectOption == null) {
+            sql = "select * from " + tableName + " where ";
+        } else {
+            // TODO: selectOption is not implemented yet
+            sql = "select * from " + tableName + " where ";
+        }
+        Set<Map.Entry<String, String>> entrySet = mappedProperties.entrySet();
+        Iterator<Map.Entry<String, String>> iterator = entrySet.iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, String> entry = iterator.next();
+            String key = entry.getKey();
+            String value = entry.getValue();
+            String column = Util.javaNameToDbName(value);
+            sql = sql + column + " = '" + entity.getProperty(key).getValue().toString() + "'";
+            if (iterator.hasNext()) {
+                sql = sql + " and ";
+            }
+        }
+        String condition = null;
+        try {
+            if (filterOption != null) {
+                condition = (String) filterOption.getExpression().accept(expressionVisitor);
+                sql = sql + " where " + condition;
+            }
+            Query<RowSet<Row>> query = pgClient.query(sql);
+            Multi<QuarkEntity> quarkEntityMulti = query.execute()
+                    .onItem().transformToMulti(set -> Multi.createFrom().iterable(set))
+                    .onItem().transform(QuarkEntity::from);
+            return quarkEntityMulti.collect().asList().await().indefinitely();
+        } catch (ExpressionVisitException e) {
+            e.printStackTrace();
+            throw new ODataApplicationException(e.getMessage(),
+                    HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
+        }
     }
 
     @Override
@@ -131,7 +143,7 @@ public class EntityServiceImpl implements EntityService {
                 .flatMap(r -> pgClient.query("INSERT INTO party VALUES ('9020', 'Apple Co.', 'PARTY_GROUP', 'ENABLED')").execute())
                 .await().indefinitely();
         pgClient.query("DROP TABLE IF EXISTS person").execute()
-                .flatMap(r -> pgClient.query("CREATE TABLE person (id TEXT PRIMARY KEY, last_name TEXT NOT NULL, first_name TEXT, party_id TEXT NOT NULL)").execute())
+                .flatMap(r -> pgClient.query("CREATE TABLE person (id TEXT PRIMARY KEY, last_name TEXT, first_name TEXT, party_id TEXT NOT NULL)").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9000', 'Zhang', 'San', '9000')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9010', 'Wang', 'Qiang', '9010')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9020', 'Li', 'Si', '9020')").execute())
