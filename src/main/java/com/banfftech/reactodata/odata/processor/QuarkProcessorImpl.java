@@ -54,7 +54,7 @@ public class QuarkProcessorImpl implements QuarkProcessor{
         String regexp = "\'";
         String keyText = keyPredicates.get(0).getText();
         String id = keyText.replaceAll(regexp, "");
-        QuarkEntity quarkEntity = entityService.findEntityById(entityName, id);
+        QuarkEntity quarkEntity = entityService.findEntityById(entityName, id, queryOptions);
         if (queryOptions != null && queryOptions.get("expandOption") != null) {
             addExpandOption((ExpandOption) queryOptions.get("expandOption"), List.of(quarkEntity), edmEntityType);
         }

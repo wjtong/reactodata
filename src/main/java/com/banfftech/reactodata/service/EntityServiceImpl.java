@@ -7,6 +7,7 @@ import com.banfftech.reactodata.odata.QuarkEntity;
 import com.banfftech.reactodata.odata.processor.OdataExpressionVisitor;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.pgclient.PgPool;
 import io.vertx.mutiny.sqlclient.Query;
 import io.vertx.mutiny.sqlclient.Row;
@@ -109,19 +110,21 @@ public class EntityServiceImpl implements EntityService {
     }
 
     @Override
-    public QuarkEntity findEntityById(String entityName, String id) throws ODataApplicationException {
-//        Class<?> objectClass = null;
-//        GenericEntity genericEntity = null;
-//        try {
-//            String packageEntityName = EdmConst.ENTITY_PACKAGE + "." + entityName;
-//            objectClass = Class.forName(packageEntityName);
-//            Method method = objectClass.getMethod("findById", Object.class);
-//            genericEntity = (GenericEntity) method.invoke(objectClass, id);
-//        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-//            throw new RuntimeException(e);
-//        }
-//        return genericEntity;
-        return null;
+    public QuarkEntity findEntityById(String entityName, String id, Map<String, QueryOption> queryOptions) throws ODataApplicationException {
+        SelectOption selectOption = (SelectOption) queryOptions.get("selectOption");
+        String tableName = Util.javaNameToDbName(entityName);
+        String sql;
+        if (selectOption == null) {
+            sql = "select * from " + tableName + " where id = '" + id + "'";
+        } else {
+            // TODO: selectOption is not implemented yet
+            sql = "select * from " + tableName + " where id = '" + id + "'";
+        }
+        Query<RowSet<Row>> query = pgClient.query(sql);
+        Uni<QuarkEntity> quarkEntityUni = query.execute()
+                .onItem().transform(RowSet::iterator)
+                .onItem().transform(iterator -> iterator.hasNext() ? QuarkEntity.from(iterator.next()) : null);
+        return quarkEntityUni.await().indefinitely();
     }
     void config(@Observes StartupEvent ev) {
         if (schemaCreate) {
