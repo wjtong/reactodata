@@ -34,7 +34,7 @@ public class QuarkProcessorImpl implements QuarkProcessor{
     public EntityCollection findList(EdmEntityType edmEntityType, Map<String,
             QueryOption> queryOptions) throws ODataApplicationException {
         String entityName = edmEntityType.getName();
-        List<QuarkEntity> quarkEntities = entityService.findEntity(entityName, queryOptions);
+        List<QuarkEntity> quarkEntities = entityService.findEntity(edmEntityType, queryOptions);
         EntityCollection entityCollection = new EntityCollection();
         entityCollection.setCount(quarkEntities.size());
         entityCollection.getEntities().addAll(quarkEntities);
@@ -65,8 +65,7 @@ public class QuarkProcessorImpl implements QuarkProcessor{
     public QuarkEntity findRelatedOne(QuarkEntity entity, EdmNavigationProperty edmNavigationProperty,
                                  Map<String, QueryOption> queryOptions) throws ODataApplicationException {
         Map<String, String> mappedProperties = retrieveMappedProperties(edmNavigationProperty);
-        String targetEntityName = edmNavigationProperty.getType().getName();
-        List<QuarkEntity> quarkEntities = entityService.findRelatedEntity(entity, targetEntityName, mappedProperties, queryOptions);
+        List<QuarkEntity> quarkEntities = entityService.findRelatedEntity(entity, edmNavigationProperty.getType(), mappedProperties, queryOptions);
         if (quarkEntities != null && quarkEntities.size() > 0) {
             EdmEntityType edmEntityType = (EdmEntityType) edmNavigationProperty.getType();
             QuarkEntity relatedEntity = quarkEntities.get(0);
@@ -225,9 +224,8 @@ public class QuarkProcessorImpl implements QuarkProcessor{
                                             Map<String, QueryOption> queryOptions)
             throws ODataApplicationException {
         EntityCollection entityCollection = new EntityCollection();
-        String targetEntityName = edmNavigationProperty.getType().getName();
         Map<String, String> mappedProperties = retrieveMappedProperties(edmNavigationProperty);
-        List<QuarkEntity> entities = entityService.findRelatedEntity(entity, targetEntityName, mappedProperties, queryOptions);
+        List<QuarkEntity> entities = entityService.findRelatedEntity(entity, edmNavigationProperty.getType(), mappedProperties, queryOptions);
         //filter、orderby、page
         FilterOption filterOption = queryOptions != null? (FilterOption) queryOptions.get("filterOption"):null;
         OrderByOption orderbyOption = queryOptions != null? (OrderByOption) queryOptions.get("orderByOption"):null;

@@ -15,6 +15,7 @@ import io.vertx.mutiny.sqlclient.RowSet;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.queryoption.FilterOption;
@@ -37,22 +38,26 @@ public class EntityServiceImpl implements EntityService {
     boolean schemaCreate;
 
     @Override
-    public List<QuarkEntity> findEntity(String tableName, Map<String, QueryOption> queryOptions) throws ODataApplicationException {
+    public List<QuarkEntity> findEntity(EdmEntityType edmEntityType, Map<String, QueryOption> queryOptions) throws ODataApplicationException {
+        String tableName = Util.javaNameToDbName(edmEntityType.getName());
         FilterOption filterOption = (FilterOption) queryOptions.get("filterOption");
         SelectOption selectOption = (SelectOption) queryOptions.get("selectOption");
-        OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor();
+        OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
         String sql;
         if (selectOption == null) {
-            sql = "select * from " + tableName;
+            sql = "select * from ";
         } else {
             // TODO: selectOption is not implemented yet
-            sql = "select * from " + tableName;
+            sql = "select * from ";
         }
         String condition = null;
         try {
             if (filterOption != null) {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
+                sql = sql + expressionVisitor.getJoinedTableName();
                 sql = sql + " where " + condition;
+            } else {
+                sql = sql + tableName;
             }
             Query<RowSet<Row>> query = pgClient.query(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
@@ -67,11 +72,11 @@ public class EntityServiceImpl implements EntityService {
     }
 
     @Override
-    public List<QuarkEntity> findRelatedEntity(QuarkEntity entity, String targetEntityName, Map<String, String> mappedProperties, Map<String, QueryOption> queryOptions) throws ODataApplicationException {
+    public List<QuarkEntity> findRelatedEntity(QuarkEntity entity, EdmEntityType targetEdmEntityType, Map<String, String> mappedProperties, Map<String, QueryOption> queryOptions) throws ODataApplicationException {
         FilterOption filterOption = (FilterOption) queryOptions.get("filterOption");
         SelectOption selectOption = (SelectOption) queryOptions.get("selectOption");
-        String tableName = Util.javaNameToDbName(targetEntityName);
-        OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor();
+        String tableName = Util.javaNameToDbName(targetEdmEntityType.getName());
+        OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(targetEdmEntityType);
         String sql;
         if (selectOption == null) {
             sql = "select * from " + tableName + " where ";

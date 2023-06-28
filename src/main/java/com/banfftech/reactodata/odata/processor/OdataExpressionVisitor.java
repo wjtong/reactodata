@@ -1,19 +1,17 @@
 package com.banfftech.reactodata.odata.processor;
 
 import com.banfftech.reactodata.Util;
+import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.edm.EdmEnumType;
 import org.apache.olingo.commons.api.edm.EdmProperty;
 import org.apache.olingo.commons.api.edm.EdmType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
-import org.apache.olingo.server.api.uri.UriResource;
-import org.apache.olingo.server.api.uri.UriResourcePrimitiveProperty;
+import org.apache.olingo.server.api.uri.*;
 import org.apache.olingo.server.api.uri.queryoption.expression.*;
+import org.apache.olingo.server.core.uri.UriResourcePrimitivePropertyImpl;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 // OdataExpressionVisitor will translate odata FilterOption to hibernate query
 public class OdataExpressionVisitor implements ExpressionVisitor {
@@ -29,6 +27,13 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.LT, "<");
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.HAS, "like");
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.IN, "in");
+    }
+    private final EdmEntityType edmEntityType;
+    private String joinedTableName;
+
+    public OdataExpressionVisitor(EdmEntityType edmEntityType) {
+        this.edmEntityType = edmEntityType;
+        this.joinedTableName = Util.javaNameToDbName(edmEntityType.getName());
     }
 
     @Override
@@ -76,9 +81,46 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
             EdmProperty edmProperty = uriResourceProperty.getProperty();
             return edmProperty;
         } else {
-            throw new ODataApplicationException("Only primitive properties are implemented in filter expressions.",
-                    HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
+            return visitMemberMultiParts(uriResourceParts); // 返回Object，直接返回
+
         }
+    }
+
+    private Object visitMemberMultiParts(List<UriResource> uriResourceParts) throws ODataApplicationException {
+        if (uriResourceParts.get(uriResourceParts.size() - 1) instanceof UriResourceCount) {
+            return uriResourceParts.toString();
+        }
+        int size = uriResourceParts.size();
+        UriResource lastUriResourcePart = uriResourceParts.get(size - 1);
+        if (lastUriResourcePart instanceof UriResourceLambdaAny) {
+            // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
+        }
+        UriResource firstUriResourcePart = uriResourceParts.get(0);
+        if (firstUriResourcePart instanceof UriResourceLambdaVariable) {
+            // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
+        }
+        // 普通的多段式查询，例如/Contents?$filter=DataResource/dataResourceTypeId eq 'ELECTRONIC_TEXT'
+        List<String> resourceParts = new ArrayList<>();
+        for (int i = 0; i < size - 1; i++) {
+            resourceParts.add(uriResourceParts.get(i).getSegmentValue());
+        }
+        String lastAlias = null;
+        String prevLastAlias = null;
+        lastAlias = addMultiParts(resourceParts);
+        // 最后一段是PropertyName
+        UriResource resourceProperty = uriResourceParts.get(size - 1);
+        String propertyName = resourceProperty.getSegmentValue();
+        String filterProperty = lastAlias + "." + Util.javaNameToDbName(propertyName);
+        return filterProperty;
+
+
+//        throw new ODataApplicationException("Only primitive properties are implemented in filter expressions.",
+//                HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
+    }
+
+    private String addMultiParts(List<String> resourceParts) {
+        // TODO: 组建多表join
+        return null;
     }
 
     @Override
@@ -104,5 +146,9 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
     @Override
     public Object visitEnum(EdmEnumType edmEnumType, List list) throws ExpressionVisitException, ODataApplicationException {
         return null;
+    }
+
+    public String getJoinedTableName() {
+        return joinedTableName;
     }
 }
