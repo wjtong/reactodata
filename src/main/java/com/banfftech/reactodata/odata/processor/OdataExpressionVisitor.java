@@ -1,10 +1,7 @@
 package com.banfftech.reactodata.odata.processor;
 
 import com.banfftech.reactodata.Util;
-import org.apache.olingo.commons.api.edm.EdmEntityType;
-import org.apache.olingo.commons.api.edm.EdmEnumType;
-import org.apache.olingo.commons.api.edm.EdmProperty;
-import org.apache.olingo.commons.api.edm.EdmType;
+import org.apache.olingo.commons.api.edm.*;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.*;
@@ -29,11 +26,11 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.IN, "in");
     }
     private final EdmEntityType edmEntityType;
-    private String joinedTableName;
+    private String joinSql;
 
     public OdataExpressionVisitor(EdmEntityType edmEntityType) {
         this.edmEntityType = edmEntityType;
-        this.joinedTableName = Util.javaNameToDbName(edmEntityType.getName());
+        this.joinSql = Util.javaNameToDbName(edmEntityType.getName());
     }
 
     @Override
@@ -119,8 +116,28 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
     }
 
     private String addMultiParts(List<String> resourceParts) {
-        // TODO: 组建多表join
-        return null;
+        int index = 0;
+        String sourceTableName = Util.javaNameToDbName(edmEntityType.getName());
+        for (String resourcePart : resourceParts) {
+            EdmNavigationProperty edmNavigationProperty = edmEntityType.getNavigationProperty(resourcePart);
+            if (edmNavigationProperty != null) {
+                EdmEntityType targetEntityType = edmNavigationProperty.getType();
+                String targetTableName = Util.javaNameToDbName(targetEntityType.getName());
+                List<EdmReferentialConstraint> referentialConstraints = edmNavigationProperty.getReferentialConstraints();
+                EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
+                String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
+                String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
+                joinSql = joinSql + " left join " + targetTableName + " on " + sourceTableName + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
+                if (index == resourceParts.size() - 2) {
+                    break;
+                }
+                sourceTableName = targetTableName;
+                index++;
+            } else {
+                throw new RuntimeException("not support");
+            }
+        }
+        return sourceTableName;
     }
 
     @Override
@@ -148,7 +165,7 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         return null;
     }
 
-    public String getJoinedTableName() {
-        return joinedTableName;
+    public String getJoinSql() {
+        return joinSql;
     }
 }

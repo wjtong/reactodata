@@ -54,7 +54,7 @@ public class EntityServiceImpl implements EntityService {
         try {
             if (filterOption != null) {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
-                sql = sql + expressionVisitor.getJoinedTableName();
+                sql = sql + expressionVisitor.getJoinSql();
                 sql = sql + " where " + condition;
             } else {
                 sql = sql + tableName;
