@@ -1,5 +1,6 @@
 package com.banfftech.reactodata.odata.processor;
 
+import com.banfftech.reactodata.Util;
 import org.apache.olingo.commons.api.edm.EdmEnumType;
 import org.apache.olingo.commons.api.edm.EdmProperty;
 import org.apache.olingo.commons.api.edm.EdmType;
@@ -32,7 +33,12 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
 
     @Override
     public Object visitBinaryOperator(BinaryOperatorKind binaryOperatorKind, Object o, Object t1) throws ExpressionVisitException, ODataApplicationException {
-        String result = o + " " + COMPARISONOPERATORMAP.get(binaryOperatorKind) + " " + t1;
+        Object l = o;
+        if (o instanceof EdmProperty) {
+            String propertyName = ((EdmProperty) o).getName();
+            l = Util.javaNameToDbName(propertyName);
+        }
+        String result = l + " " + COMPARISONOPERATORMAP.get(binaryOperatorKind) + " " + t1;
         return result;
     }
 

@@ -24,6 +24,7 @@ import org.apache.olingo.server.api.uri.queryoption.SelectOption;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,7 +47,7 @@ public class EntityImpl implements EntityProcessor {
             int resourcePartsSize = uriResourceParts.size();
             int i = 0;
             for (UriResource uriResource:uriResourceParts) {
-                Map<String, QueryOption> useQueryOptions = null;
+                Map<String, QueryOption> useQueryOptions = new HashMap<>();
                 if (i == resourcePartsSize - 1) { // 只有到最后一段采用queryOptions
                     useQueryOptions = queryOptions;
                 }

@@ -144,12 +144,15 @@ public class EntityServiceImpl implements EntityService {
                 .flatMap(r -> pgClient.query("INSERT INTO party VALUES ('9000', 'Orange Co.', 'PARTY_GROUP', 'ENABLED')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO party VALUES ('9010', 'Pearl Co.', 'PARTY_GROUP', 'ENABLED')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO party VALUES ('9020', 'Apple Co.', 'PARTY_GROUP', 'ENABLED')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party VALUES ('9030', 'Zhang San', 'PERSON', 'ENABLED')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party VALUES ('9040', 'Wang Qiang', 'PERSON', 'ENABLED')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party VALUES ('9050', 'Li Si', 'PERSON', 'ENABLED')").execute())
                 .await().indefinitely();
         pgClient.query("DROP TABLE IF EXISTS person").execute()
                 .flatMap(r -> pgClient.query("CREATE TABLE person (id TEXT PRIMARY KEY, last_name TEXT, first_name TEXT, party_id TEXT NOT NULL)").execute())
-                .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9000', 'Zhang', 'San', '9000')").execute())
-                .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9010', 'Wang', 'Qiang', '9010')").execute())
-                .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9020', 'Li', 'Si', '9020')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9000', 'Zhang', 'San', '9030')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9010', 'Wang', 'Qiang', '9040')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9020', 'Li', 'Si', '9050')").execute())
                 .await().indefinitely();
     }
 }
