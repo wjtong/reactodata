@@ -179,7 +179,7 @@ public class QuarkProcessorImpl implements QuarkProcessor{
                                      EdmNavigationProperty edmNavigationProperty,
                                      Map<String, QueryOption> queryOptions) throws ODataApplicationException {
         EntityCollection expandEntityCollection = getExpandData(entity, edmEntityType, edmNavigationProperty, queryOptions);
-        if (null != expandEntityCollection && expandEntityCollection.getEntities() != null) {
+        if (null != expandEntityCollection && expandEntityCollection.getEntities().size() > 0) {
             Entity expandEntity = expandEntityCollection.getEntities().get(0);
 //            expandEntityCollection.setCount(expandEntityCollection.getEntities().size());
             Link link = new Link();

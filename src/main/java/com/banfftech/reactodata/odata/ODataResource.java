@@ -41,7 +41,27 @@ public class ODataResource {
     @Path("$metadata")
     @Produces(MediaType.APPLICATION_XML)
     public Response getMetadata() {
-//        LOGGER.info(edmConfig.toString());
+        try {
+            EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
+            edmProvider.loadService();
+            OData odata = OData.newInstance();
+            ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
+            ODataSerializer serializer = odata.createSerializer(ContentType.APPLICATION_XML);
+            SerializerResult serializerResult = serializer.metadataDocument(serviceMetadata);
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            IOUtils.copy(serializerResult.getContent(), outputStream);
+
+            return Response.ok(outputStream.toByteArray()).type(ContentType.APPLICATION_XML.toContentTypeString()).build();
+        } catch (ODataException | IOException e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("An error occurred while generating the OData metadata document: " + e.getMessage())
+                    .build();
+        }
+    }
+    @GET
+    @Path("reactive/$metadata")
+    @Produces(MediaType.APPLICATION_XML)
+    public Response getTestMetadata() {
         try {
             EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
             edmProvider.loadService();

@@ -10,7 +10,8 @@
         {"name": "statusId", "type": "id" }
       ],
       "navigation": [
-        {"name": "person", "type": "Person", "relation": "one", "property": "id", "ref-property": "partyId" }
+        {"name": "person", "type": "Person", "relation": "one", "property": "id", "ref-property": "partyId" },
+        {"name": "partyRoles", "type": "PartyRole", "relation": "many", "property": "id", "ref-property": "partyId" }
       ]
     },
     {
@@ -19,6 +20,17 @@
         {"name": "partyId", "type": "id", "required": true },
         {"name": "firstName", "type": "name"},
         {"name": "lastName", "type": "name"}
+      ],
+      "navigation": [
+        {"name": "party", "type": "Party", "relation": "one", "property": "partyId", "ref-property": "id" },
+        {"name": "partyRoles", "type": "PartyRole", "relation": "many", "property": "partyId", "ref-property": "partyId" }
+      ]
+    },
+    {
+      "entity-name": "PartyRole",
+      "properties": [
+        {"name": "partyId", "type": "id", "required": true },
+        {"name": "roleTypeId", "type": "id", "required": true }
       ]
     }
   ]

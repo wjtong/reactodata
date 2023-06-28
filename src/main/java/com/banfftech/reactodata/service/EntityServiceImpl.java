@@ -95,7 +95,7 @@ public class EntityServiceImpl implements EntityService {
         try {
             if (filterOption != null) {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
-                sql = sql + " where " + condition;
+                sql = sql + " and " + condition;
             }
             Query<RowSet<Row>> query = pgClient.query(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
@@ -153,6 +153,15 @@ public class EntityServiceImpl implements EntityService {
                 .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9000', 'Zhang', 'San', '9030')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9010', 'Wang', 'Qiang', '9040')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO person VALUES ('9020', 'Li', 'Si', '9050')").execute())
+                .await().indefinitely();
+        pgClient.query("DROP TABLE IF EXISTS party_role").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE party_role (id TEXT PRIMARY KEY, party_id TEXT NOT NULL, role_type_id TEXT NOT NULL)").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9000', '9000', 'CARRIER')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9010', '9000', 'SUPPLIER')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9020', '9000', 'ACCOUNT')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9030', '9030', 'EMAIL_ADMIN')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9040', '9030', 'SALES_REP')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9050', '9030', 'SHIPMENT_CLERK')").execute())
                 .await().indefinitely();
     }
 }

@@ -74,6 +74,7 @@ public class EntityImpl implements EntityProcessor {
                     targetEntityType = edmEntityType;
                     edmBindingTarget = edmBindingTarget.getRelatedBindingTarget(edmNavigationProperty.getName());
                 }
+                i++;
             }
             serializeEntity(oDataRequest, oDataResponse, edmBindingTarget, targetEntityType,
                     contentType, entity, queryOptions);
