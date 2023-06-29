@@ -1,8 +1,6 @@
 package com.banfftech.reactodata.service;
 
 import com.banfftech.reactodata.Util;
-import com.banfftech.reactodata.edmconfig.EdmConst;
-import com.banfftech.reactodata.model.Fruit;
 import com.banfftech.reactodata.odata.QuarkEntity;
 import com.banfftech.reactodata.odata.processor.OdataExpressionVisitor;
 import io.quarkus.runtime.StartupEvent;
@@ -24,9 +22,6 @@ import org.apache.olingo.server.api.uri.queryoption.SelectOption;
 import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
 
 @ApplicationScoped
@@ -54,7 +49,7 @@ public class EntityServiceImpl implements EntityService {
         try {
             if (filterOption != null) {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
-                sql = sql + expressionVisitor.getJoinSql();
+                sql = sql + expressionVisitor.getFromSql();
                 sql = sql + " where " + condition;
             } else {
                 sql = sql + tableName;

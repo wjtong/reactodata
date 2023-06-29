@@ -2,7 +2,6 @@ package com.banfftech.reactodata.odata.processor;
 
 import com.banfftech.reactodata.Util;
 import org.apache.olingo.commons.api.edm.*;
-import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.*;
 import org.apache.olingo.server.api.uri.queryoption.expression.*;
@@ -33,12 +32,19 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.MOD, "%");
     }
     private final EdmEntityType edmEntityType;
-    private Set<String> tables = new HashSet<>();
-    private String joinSql;
+    private EdmEntityType joinEdmEntityType;
+    private String joinAlias;
+    private Map<String, String> tableAlias = new HashMap<>();
+    private String fromSql;
+    private String groupBySql;
 
     public OdataExpressionVisitor(EdmEntityType edmEntityType) {
         this.edmEntityType = edmEntityType;
-        this.joinSql = Util.javaNameToDbName(edmEntityType.getName());
+        String tableName = Util.javaNameToDbName(edmEntityType.getName());
+        this.fromSql = tableName;
+        this.joinEdmEntityType = edmEntityType;
+        this.joinAlias = tableName;
+        this.groupBySql = "";
     }
 
     @Override
@@ -64,7 +70,7 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
 
     @Override
     public Object visitLambdaExpression(String s, String s1, Expression expression) throws ExpressionVisitException, ODataApplicationException {
-        return null;
+        return expression.accept(this);
     }
 
     @Override
@@ -91,25 +97,36 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         }
     }
 
-    private Object visitMemberMultiParts(List<UriResource> uriResourceParts) throws ODataApplicationException {
+    private Object visitMemberMultiParts(List<UriResource> uriResourceParts) throws ODataApplicationException, ExpressionVisitException {
         if (uriResourceParts.get(uriResourceParts.size() - 1) instanceof UriResourceCount) {
             return uriResourceParts.toString();
         }
         int size = uriResourceParts.size();
-        UriResource lastUriResourcePart = uriResourceParts.get(size - 1);
-        if (lastUriResourcePart instanceof UriResourceLambdaAny) {
-            // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
-        }
-        UriResource firstUriResourcePart = uriResourceParts.get(0);
-        if (firstUriResourcePart instanceof UriResourceLambdaVariable) {
-            // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
-        }
+//        UriResource firstUriResourcePart = uriResourceParts.get(0);
         // 普通的多段式查询，例如/Contents?$filter=DataResource/dataResourceTypeId eq 'ELECTRONIC_TEXT'
         List<String> resourceParts = new ArrayList<>();
-        for (int i = 0; i < size - 1; i++) {
-            resourceParts.add(uriResourceParts.get(i).getSegmentValue());
-        }
         String lastAlias = null;
+        EdmEntityType lastEdmEntityType = edmEntityType;
+        for (int i = 0; i < size; i++) {
+            UriResource uriResource = uriResourceParts.get(i);
+            if (uriResource instanceof UriResourceLambdaAny) {
+                lastAlias = addMultiParts(resourceParts);
+                UriResourceLambdaAny any = (UriResourceLambdaAny) uriResource;
+                // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
+                Object lambdaResult = visitLambdaExpression("ANY", any.getLambdaVariable(), any.getExpression());
+                return lambdaResult;
+            }
+            if (uriResource instanceof UriResourceLambdaVariable) {
+                // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
+                UriResourceLambdaVariable lambdaVariable = (UriResourceLambdaVariable) uriResource;
+                String variableName = lambdaVariable.getSegmentValue();
+                UriResource resourceProperty = uriResourceParts.get(1);
+                String propertyName = resourceProperty.getSegmentValue();
+                String filterProperty = variableName + "." + Util.javaNameToDbName(propertyName);
+                return filterProperty;
+            }
+            resourceParts.add(uriResource.getSegmentValue());
+        }
         String prevLastAlias = null;
         lastAlias = addMultiParts(resourceParts);
         // 最后一段是PropertyName
@@ -123,11 +140,32 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
 //                HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
     }
 
+    private String addJoinTable(String lastAlias, EdmEntityType lastEdmEntityType, String navigationName) {
+        Set<String> aliasSet = tableAlias.keySet();
+        EdmNavigationProperty edmNavigationProperty = lastEdmEntityType.getNavigationProperty(navigationName);
+        if (edmNavigationProperty != null) {
+            EdmEntityType targetEntityType = edmNavigationProperty.getType();
+            String targetTableName = Util.javaNameToDbName(targetEntityType.getName());
+            List<EdmReferentialConstraint> referentialConstraints = edmNavigationProperty.getReferentialConstraints();
+            EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
+            String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
+            String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
+            if (!aliasSet.contains(targetTableName)) {
+                fromSql = fromSql + " left join " + targetTableName + " on " + lastAlias + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
+                tableAlias.put(targetTableName, targetTableName);
+            }
+            return targetTableName;
+        } else {
+            throw new RuntimeException("not support");
+        }
+    }
+
     private String addMultiParts(List<String> resourceParts) {
         int index = 0;
-        String sourceTableName = Util.javaNameToDbName(edmEntityType.getName());
+        String sourceTableName = Util.javaNameToDbName(joinEdmEntityType.getName());
+        Set<String> aliasSet = tableAlias.keySet();
         for (String resourcePart : resourceParts) {
-            EdmNavigationProperty edmNavigationProperty = edmEntityType.getNavigationProperty(resourcePart);
+            EdmNavigationProperty edmNavigationProperty = joinEdmEntityType.getNavigationProperty(resourcePart);
             if (edmNavigationProperty != null) {
                 EdmEntityType targetEntityType = edmNavigationProperty.getType();
                 String targetTableName = Util.javaNameToDbName(targetEntityType.getName());
@@ -135,9 +173,9 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
                 EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
                 String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
                 String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
-                if (!tables.contains(targetTableName)) {
-                    joinSql = joinSql + " left join " + targetTableName + " on " + sourceTableName + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
-                    tables.add(targetTableName);
+                if (!aliasSet.contains(targetTableName)) {
+                    fromSql = fromSql + " left join " + targetTableName + " on " + sourceTableName + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
+                    tableAlias.put(targetTableName, targetTableName);
                 }
                 if (index == resourceParts.size() - 2) {
                     break;
@@ -176,7 +214,7 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         return null;
     }
 
-    public String getJoinSql() {
-        return joinSql;
+    public String getFromSql() {
+        return fromSql;
     }
 }
