@@ -24,8 +24,16 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.LT, "<");
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.HAS, "like");
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.IN, "in");
+        COMPARISONOPERATORMAP.put(BinaryOperatorKind.AND, "and");
+        COMPARISONOPERATORMAP.put(BinaryOperatorKind.OR, "or");
+        COMPARISONOPERATORMAP.put(BinaryOperatorKind.ADD, "+");
+        COMPARISONOPERATORMAP.put(BinaryOperatorKind.SUB, "-");
+        COMPARISONOPERATORMAP.put(BinaryOperatorKind.MUL, "*");
+        COMPARISONOPERATORMAP.put(BinaryOperatorKind.DIV, "/");
+        COMPARISONOPERATORMAP.put(BinaryOperatorKind.MOD, "%");
     }
     private final EdmEntityType edmEntityType;
+    private Set<String> tables = new HashSet<>();
     private String joinSql;
 
     public OdataExpressionVisitor(EdmEntityType edmEntityType) {
@@ -127,7 +135,10 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
                 EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
                 String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
                 String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
-                joinSql = joinSql + " left join " + targetTableName + " on " + sourceTableName + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
+                if (!tables.contains(targetTableName)) {
+                    joinSql = joinSql + " left join " + targetTableName + " on " + sourceTableName + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
+                    tables.add(targetTableName);
+                }
                 if (index == resourceParts.size() - 2) {
                     break;
                 }
