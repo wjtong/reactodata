@@ -105,12 +105,11 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
 //        UriResource firstUriResourcePart = uriResourceParts.get(0);
         // 普通的多段式查询，例如/Contents?$filter=DataResource/dataResourceTypeId eq 'ELECTRONIC_TEXT'
         List<String> resourceParts = new ArrayList<>();
-        String lastAlias = null;
+        String lastAlias = joinAlias;
         EdmEntityType lastEdmEntityType = edmEntityType;
         for (int i = 0; i < size; i++) {
             UriResource uriResource = uriResourceParts.get(i);
             if (uriResource instanceof UriResourceLambdaAny) {
-                lastAlias = addMultiParts(resourceParts);
                 UriResourceLambdaAny any = (UriResourceLambdaAny) uriResource;
                 // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
                 Object lambdaResult = visitLambdaExpression("ANY", any.getLambdaVariable(), any.getExpression());
@@ -126,9 +125,10 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
                 return filterProperty;
             }
             resourceParts.add(uriResource.getSegmentValue());
+            lastEdmEntityType = addJoinTable(lastAlias, lastEdmEntityType, uriResource.getSegmentValue());
+            lastAlias = Util.javaNameToDbName(lastEdmEntityType.getName());
         }
-        String prevLastAlias = null;
-        lastAlias = addMultiParts(resourceParts);
+//        lastAlias = addMultiParts(resourceParts);
         // 最后一段是PropertyName
         UriResource resourceProperty = uriResourceParts.get(size - 1);
         String propertyName = resourceProperty.getSegmentValue();
@@ -140,7 +140,7 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
 //                HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
     }
 
-    private String addJoinTable(String lastAlias, EdmEntityType lastEdmEntityType, String navigationName) {
+    private EdmEntityType addJoinTable(String lastAlias, EdmEntityType lastEdmEntityType, String navigationName) {
         Set<String> aliasSet = tableAlias.keySet();
         EdmNavigationProperty edmNavigationProperty = lastEdmEntityType.getNavigationProperty(navigationName);
         if (edmNavigationProperty != null) {
@@ -154,7 +154,7 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
                 fromSql = fromSql + " left join " + targetTableName + " on " + lastAlias + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
                 tableAlias.put(targetTableName, targetTableName);
             }
-            return targetTableName;
+            return targetEntityType;
         } else {
             throw new RuntimeException("not support");
         }
