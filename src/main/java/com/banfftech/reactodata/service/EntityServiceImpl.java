@@ -3,6 +3,7 @@ package com.banfftech.reactodata.service;
 import com.banfftech.reactodata.Util;
 import com.banfftech.reactodata.odata.QuarkEntity;
 import com.banfftech.reactodata.odata.processor.OdataExpressionVisitor;
+import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -56,7 +57,7 @@ public class EntityServiceImpl implements EntityService {
                 sql = sql + tableName;
             }
             Query<RowSet<Row>> query = pgClient.query(sql);
-            System.out.println(sql);
+            Log.info(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
                     .onItem().transformToMulti(set -> Multi.createFrom().iterable(set))
                     .onItem().transform(QuarkEntity::from);
@@ -97,9 +98,9 @@ public class EntityServiceImpl implements EntityService {
         try {
             if (filterOption != null) {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
-                sql = sql + " and " + condition;
+                sql = sql + " and " + condition + expressionVisitor.getGroupBySql();;
             }
-            System.out.println(sql);
+            Log.info(sql);
             Query<RowSet<Row>> query = pgClient.query(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
                     .onItem().transformToMulti(set -> Multi.createFrom().iterable(set))

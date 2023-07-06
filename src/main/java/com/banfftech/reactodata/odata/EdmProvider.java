@@ -2,6 +2,7 @@ package com.banfftech.reactodata.odata;
 
 import com.banfftech.reactodata.csdl.QuarkCsdlSchema;
 import com.banfftech.reactodata.edmconfig.EdmConst;
+import io.quarkus.cache.CacheResult;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.apache.olingo.commons.api.edm.provider.*;
 import org.apache.olingo.commons.api.ex.ODataException;
@@ -14,7 +15,7 @@ import java.util.List;
 public class EdmProvider implements CsdlEdmProvider {
 
     private static final FullQualifiedName CONTAINER_FQN = new FullQualifiedName(EdmConst.NAMESPACE, EdmConst.CONTAINER_NAME);
-    private static QuarkCsdlSchema csdlSchema;
+    private static QuarkCsdlSchema csdlSchema = null;
     private String serviceName;
 //    @Inject
     EdmConfigLoader edmConfigLoader;
@@ -118,7 +119,11 @@ public class EdmProvider implements CsdlEdmProvider {
     }
 
     @Override
+    @CacheResult(cacheName = "csdlSchemas")
     public List<CsdlSchema> getSchemas() {
+        if (this.csdlSchema == null) {
+            loadService();
+        }
         // Return schema in a list
         return Collections.singletonList(this.csdlSchema);
     }

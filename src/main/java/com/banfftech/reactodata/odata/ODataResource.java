@@ -43,7 +43,6 @@ public class ODataResource {
     public Response getMetadata() {
         try {
             EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
-            edmProvider.loadService();
             OData odata = OData.newInstance();
             ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
             ODataSerializer serializer = odata.createSerializer(ContentType.APPLICATION_XML);
@@ -64,7 +63,6 @@ public class ODataResource {
     public Response getTestMetadata() {
         try {
             EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
-            edmProvider.loadService();
             OData odata = OData.newInstance();
             ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
             ODataSerializer serializer = odata.createSerializer(ContentType.APPLICATION_XML);
@@ -113,7 +111,6 @@ public class ODataResource {
 
         try {
             EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
-            edmProvider.loadService();
             OData odata = OData.newInstance();
             ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
             ODataHandler handler = odata.createRawHandler(serviceMetadata);
