@@ -113,7 +113,6 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         }
 //        UriResource firstUriResourcePart = uriResourceParts.get(0);
         // 普通的多段式查询，例如/Contents?$filter=DataResource/dataResourceTypeId eq 'ELECTRONIC_TEXT'
-        List<String> resourceParts = new ArrayList<>();
         String lastAlias = joinAlias;
         EdmEntityType lastEdmEntityType = edmEntityType;
         for (int i = 0; i < size; i++) {
@@ -142,14 +141,14 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
                 // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
                 UriResourceLambdaAny any = (UriResourceLambdaAny) uriResourceParts.get(size - 1);
                 alias = any.getLambdaVariable();
-            } else {
+                lastEdmEntityType = addJoinTable(lastAlias, lastEdmEntityType, uriResource.getSegmentValue() , alias);
+                lastAlias = alias;
+            } else if (!(uriResource instanceof UriResourceProperty)) {
                 alias = Util.javaNameToDbName(uriResource.getSegmentValue());
+                lastEdmEntityType = addJoinTable(lastAlias, lastEdmEntityType, uriResource.getSegmentValue() , alias);
+                lastAlias = alias;
             }
-            resourceParts.add(uriResource.getSegmentValue());
-            lastEdmEntityType = addJoinTable(lastAlias, lastEdmEntityType, uriResource.getSegmentValue() , alias);
-            lastAlias = alias;
         }
-//        lastAlias = addMultiParts(resourceParts);
         // 最后一段是PropertyName
         UriResource resourceProperty = uriResourceParts.get(size - 1);
         String propertyName = resourceProperty.getSegmentValue();
@@ -169,43 +168,14 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
             EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
             String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
             String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
-            if (!aliasSet.contains(targetTableName)) {
+            if (!aliasSet.contains(alias)) {
                 fromSql = fromSql + " left join " + targetTableName + " " + alias + " on " + lastAlias + "." + sourceColumnName + "=" + alias + "." + targetColumnName;
-                tableAlias.put(targetTableName, targetTableName);
+                tableAlias.put(alias, targetTableName);
             }
             return targetEntityType;
         } else {
             throw new RuntimeException("not support");
         }
-    }
-
-    private String addMultiParts(List<String> resourceParts) {
-        int index = 0;
-        String sourceTableName = Util.javaNameToDbName(joinEdmEntityType.getName());
-        Set<String> aliasSet = tableAlias.keySet();
-        for (String resourcePart : resourceParts) {
-            EdmNavigationProperty edmNavigationProperty = joinEdmEntityType.getNavigationProperty(resourcePart);
-            if (edmNavigationProperty != null) {
-                EdmEntityType targetEntityType = edmNavigationProperty.getType();
-                String targetTableName = Util.javaNameToDbName(targetEntityType.getName());
-                List<EdmReferentialConstraint> referentialConstraints = edmNavigationProperty.getReferentialConstraints();
-                EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
-                String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
-                String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
-                if (!aliasSet.contains(targetTableName)) {
-                    fromSql = fromSql + " left join " + targetTableName + " on " + sourceTableName + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
-                    tableAlias.put(targetTableName, targetTableName);
-                }
-                if (index == resourceParts.size() - 2) {
-                    break;
-                }
-                sourceTableName = targetTableName;
-                index++;
-            } else {
-                throw new RuntimeException("not support");
-            }
-        }
-        return sourceTableName;
     }
 
     @Override

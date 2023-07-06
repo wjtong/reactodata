@@ -41,7 +41,7 @@ public class EntityServiceImpl implements EntityService {
         OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
         String sql;
         if (selectOption == null) {
-            sql = "select * from ";
+            sql = "select " + tableName + ".* from ";
         } else {
             // TODO: selectOption is not implemented yet
             sql = "select * from ";
@@ -51,7 +51,7 @@ public class EntityServiceImpl implements EntityService {
             if (filterOption != null) {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
                 sql = sql + expressionVisitor.getFromSql();
-                sql = sql + " where " + condition;
+                sql = sql + " where " + condition + expressionVisitor.getGroupBySql();
             } else {
                 sql = sql + tableName;
             }
@@ -165,6 +165,7 @@ public class EntityServiceImpl implements EntityService {
                 .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9030', '9030', 'EMAIL_ADMIN')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9040', '9030', 'SALES_REP')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9050', '9030', 'SHIPMENT_CLERK')").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9060', '9040', 'SHIPMENT_CLERK')").execute())
                 .await().indefinitely();
     }
 }
