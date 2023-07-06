@@ -32,18 +32,20 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         COMPARISONOPERATORMAP.put(BinaryOperatorKind.MOD, "%");
     }
     private final EdmEntityType edmEntityType;
+    private final String mainTableName;
     private EdmEntityType joinEdmEntityType;
     private String joinAlias;
     private Map<String, String> tableAlias = new HashMap<>();
     private String fromSql;
     private String groupBySql;
+    private boolean needGroupBy = false;
 
     public OdataExpressionVisitor(EdmEntityType edmEntityType) {
         this.edmEntityType = edmEntityType;
-        String tableName = Util.javaNameToDbName(edmEntityType.getName());
-        this.fromSql = tableName;
+        this.mainTableName = Util.javaNameToDbName(edmEntityType.getName());
+        this.fromSql = mainTableName;
         this.joinEdmEntityType = edmEntityType;
-        this.joinAlias = tableName;
+        this.joinAlias = mainTableName;
         this.groupBySql = "";
     }
 
@@ -113,6 +115,10 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
                 UriResourceLambdaAny any = (UriResourceLambdaAny) uriResource;
                 // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
                 Object lambdaResult = visitLambdaExpression("ANY", any.getLambdaVariable(), any.getExpression());
+                if (!needGroupBy) {
+                    needGroupBy = true;
+                    groupBySql = " group by " + this.mainTableName + ".id";
+                }
                 return lambdaResult;
             }
             if (uriResource instanceof UriResourceLambdaVariable) {
@@ -216,5 +222,9 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
 
     public String getFromSql() {
         return fromSql;
+    }
+
+    public String getGroupBySql() {
+        return groupBySql;
     }
 }
