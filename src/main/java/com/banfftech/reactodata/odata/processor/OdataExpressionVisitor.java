@@ -104,12 +104,20 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
             return uriResourceParts.toString();
         }
         int size = uriResourceParts.size();
+        // 先判断是不是lambda表达式的any阶段，并且获取any的变量名及any的index
+        boolean isLambdaAny = false;
+        int lambdaAnyIndex = -1;
+        if (uriResourceParts.get(size - 1) instanceof UriResourceLambdaAny) {
+            isLambdaAny = true;
+            lambdaAnyIndex = size - 1;
+        }
 //        UriResource firstUriResourcePart = uriResourceParts.get(0);
         // 普通的多段式查询，例如/Contents?$filter=DataResource/dataResourceTypeId eq 'ELECTRONIC_TEXT'
         List<String> resourceParts = new ArrayList<>();
         String lastAlias = joinAlias;
         EdmEntityType lastEdmEntityType = edmEntityType;
         for (int i = 0; i < size; i++) {
+            String alias = null;
             UriResource uriResource = uriResourceParts.get(i);
             if (uriResource instanceof UriResourceLambdaAny) {
                 UriResourceLambdaAny any = (UriResourceLambdaAny) uriResource;
@@ -130,9 +138,16 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
                 String filterProperty = variableName + "." + Util.javaNameToDbName(propertyName);
                 return filterProperty;
             }
+            if (isLambdaAny && i == lambdaAnyIndex - 1) { // 代表已经到了any的前一段，也就是any代表的navigation
+                // 例如：Products?$filter=ProductFeatureAppl/any(c:c/productFeatureId eq 'SIZE_2' or c/productFeatureId eq 'SIZE_6')
+                UriResourceLambdaAny any = (UriResourceLambdaAny) uriResourceParts.get(size - 1);
+                alias = any.getLambdaVariable();
+            } else {
+                alias = Util.javaNameToDbName(uriResource.getSegmentValue());
+            }
             resourceParts.add(uriResource.getSegmentValue());
-            lastEdmEntityType = addJoinTable(lastAlias, lastEdmEntityType, uriResource.getSegmentValue());
-            lastAlias = Util.javaNameToDbName(lastEdmEntityType.getName());
+            lastEdmEntityType = addJoinTable(lastAlias, lastEdmEntityType, uriResource.getSegmentValue() , alias);
+            lastAlias = alias;
         }
 //        lastAlias = addMultiParts(resourceParts);
         // 最后一段是PropertyName
@@ -140,13 +155,11 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         String propertyName = resourceProperty.getSegmentValue();
         String filterProperty = lastAlias + "." + Util.javaNameToDbName(propertyName);
         return filterProperty;
-
-
 //        throw new ODataApplicationException("Only primitive properties are implemented in filter expressions.",
 //                HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
     }
 
-    private EdmEntityType addJoinTable(String lastAlias, EdmEntityType lastEdmEntityType, String navigationName) {
+    private EdmEntityType addJoinTable(String lastAlias, EdmEntityType lastEdmEntityType, String navigationName, String alias) {
         Set<String> aliasSet = tableAlias.keySet();
         EdmNavigationProperty edmNavigationProperty = lastEdmEntityType.getNavigationProperty(navigationName);
         if (edmNavigationProperty != null) {
@@ -157,7 +170,7 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
             String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
             String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
             if (!aliasSet.contains(targetTableName)) {
-                fromSql = fromSql + " left join " + targetTableName + " on " + lastAlias + "." + sourceColumnName + "=" + targetTableName + "." + targetColumnName;
+                fromSql = fromSql + " left join " + targetTableName + " " + alias + " on " + lastAlias + "." + sourceColumnName + "=" + alias + "." + targetColumnName;
                 tableAlias.put(targetTableName, targetTableName);
             }
             return targetEntityType;

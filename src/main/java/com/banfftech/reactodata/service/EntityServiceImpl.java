@@ -23,6 +23,7 @@ import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitEx
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class EntityServiceImpl implements EntityService {
@@ -55,6 +56,7 @@ public class EntityServiceImpl implements EntityService {
                 sql = sql + tableName;
             }
             Query<RowSet<Row>> query = pgClient.query(sql);
+            System.out.println(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
                     .onItem().transformToMulti(set -> Multi.createFrom().iterable(set))
                     .onItem().transform(QuarkEntity::from);
@@ -97,6 +99,7 @@ public class EntityServiceImpl implements EntityService {
                 condition = (String) filterOption.getExpression().accept(expressionVisitor);
                 sql = sql + " and " + condition;
             }
+            System.out.println(sql);
             Query<RowSet<Row>> query = pgClient.query(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
                     .onItem().transformToMulti(set -> Multi.createFrom().iterable(set))
