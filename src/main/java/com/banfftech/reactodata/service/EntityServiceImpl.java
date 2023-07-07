@@ -44,8 +44,9 @@ public class EntityServiceImpl implements EntityService {
         if (selectOption == null) {
             sql = "select " + tableName + ".* from ";
         } else {
-            // TODO: selectOption is not implemented yet
-            sql = "select * from ";
+            List<String> selectFields = Util.getSelectOptionFields(selectOption);
+            String joinSqlFields = Util.joinSqlFields(selectFields, tableName);
+            sql = "select " + joinSqlFields + " from ";
         }
         String condition = null;
         try {
@@ -79,8 +80,9 @@ public class EntityServiceImpl implements EntityService {
         if (selectOption == null) {
             sql = "select * from " + tableName + " where ";
         } else {
-            // TODO: selectOption is not implemented yet
-            sql = "select * from " + tableName + " where ";
+            List<String> selectFields = Util.getSelectOptionFields(selectOption);
+            String joinSqlFields = Util.joinSqlFields(selectFields, tableName);
+            sql = "select " + joinSqlFields + " from " + tableName + " where ";
         }
         Set<Map.Entry<String, String>> entrySet = mappedProperties.entrySet();
         Iterator<Map.Entry<String, String>> iterator = entrySet.iterator();

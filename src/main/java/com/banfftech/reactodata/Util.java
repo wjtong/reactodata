@@ -13,6 +13,7 @@ import org.apache.olingo.server.api.uri.queryoption.*;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Util {
 //    public static QuarkEntity GenericToEntity(EdmEntityType edmEntityType, GenericEntity genericEntity) {
@@ -134,6 +135,13 @@ public class Util {
         }
         return queryOptions;
     }
+    public static List<String> getSelectOptionFields(SelectOption selectOption) {
+        if (selectOption == null) {
+            return null;
+        }
+        return selectOption.getSelectItems().stream()
+                .map(item -> item.getResourcePath().getUriResourceParts().get(0).getSegmentValue()).collect(Collectors.toList());
+    }
     /**
      * 对EntityCollection中的实体数据进行分页
      */
@@ -199,5 +207,19 @@ public class Util {
         }
 
         return dbName.toString();
+    }
+
+    public static String joinSqlFields(List<String> selectFields, String tableName) {
+        String sqlFields = "";
+        int index = 0;
+        for (String selectField: selectFields) {
+            if (index > 0) {
+                sqlFields = sqlFields + ",";
+            }
+            String field = javaNameToDbName(selectField);
+            sqlFields = sqlFields + tableName + "." + field;
+            index++;
+        }
+        return sqlFields;
     }
 }
