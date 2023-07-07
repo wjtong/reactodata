@@ -4,7 +4,7 @@
   "entity-types": [
     {
       "entity-name": "Party",
-      "properties": [
+      "property": [
         {"name": "partyName", "type": "name", "required": true },
         {"name": "partyTypeId", "type": "id", "required": true },
         {"name": "statusId", "type": "id" }
@@ -12,11 +12,20 @@
       "navigation": [
         {"name": "person", "type": "Person", "relation": "one", "property": "id", "ref-property": "partyId" },
         {"name": "partyRoles", "type": "PartyRole", "relation": "many", "property": "id", "ref-property": "partyId" }
+      ],
+      "action": [
+        {
+          "name": "DisableParty",
+          "return": "Party",
+          "parameter": [
+              {"name": "comment", "type": "comment", "required": true }
+          ]
+        }
       ]
     },
     {
       "entity-name": "Person",
-      "properties": [
+      "property": [
         {"name": "partyId", "type": "id", "required": true },
         {"name": "firstName", "type": "name"},
         {"name": "lastName", "type": "name"}
@@ -28,7 +37,7 @@
     },
     {
       "entity-name": "PartyRole",
-      "properties": [
+      "property": [
         {"name": "partyId", "type": "id", "required": true },
         {"name": "roleTypeId", "type": "id", "required": true }
       ]

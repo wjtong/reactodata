@@ -118,6 +118,14 @@ public class EdmService {
 		this.actions.add(action);
 		actionMap.put(action.getName(), action);
     }
+	public void addActions(List<CsdlAction> actions) {
+		if (actions == null) {
+			return;
+		}
+		for (CsdlAction action : actions) {
+			addAction(action);
+		}
+	}
     public void addActionImport(CsdlActionImport actionImport) {
     		actionImportMap.put(actionImport.getName(), actionImport);
     }

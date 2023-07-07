@@ -190,6 +190,14 @@ public class Util {
         sb.setCharAt(0, Character.toUpperCase(sb.charAt(0)));
         return sb.toString();
     }
+    public static String lowerFirstChar(String string) {
+        if (string == null) return null;
+        if (string.length() <= 1) return string.toLowerCase(Locale.getDefault());
+        StringBuilder sb = new StringBuilder(string);
+
+        sb.setCharAt(0, Character.toLowerCase(sb.charAt(0)));
+        return sb.toString();
+    }
     public static String javaNameToDbName(String javaName) {
         if (javaName == null) return null;
         if (javaName.length() <= 0) return "";

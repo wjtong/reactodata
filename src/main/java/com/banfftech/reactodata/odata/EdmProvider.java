@@ -52,6 +52,9 @@ public class EdmProvider implements CsdlEdmProvider {
 
     @Override
     public List<CsdlAction> getActions(FullQualifiedName fullQualifiedName) throws ODataException {
+        if (csdlSchema != null) {
+            return csdlSchema.getActions(fullQualifiedName.getName());
+        }
         return null;
     }
 

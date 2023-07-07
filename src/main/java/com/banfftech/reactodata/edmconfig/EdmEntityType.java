@@ -11,10 +11,12 @@ public class EdmEntityType {
     @JsonProperty("quark-entity")
     private String quarkEntity;
 
-    @JsonProperty("properties")
-    private List<EdmProperty> properties;
+    @JsonProperty("property")
+    private List<EdmProperty> property;
     @JsonProperty("navigation")
-    private List<EdmNavigation> navigations;
+    private List<EdmNavigation> navigation;
+    @JsonProperty("action")
+    private List<EdmAction> action;
 
     public String getEntityName() {
         return entityName;
@@ -32,19 +34,27 @@ public class EdmEntityType {
         this.quarkEntity = quarkEntity;
     }
 
-    public List<EdmProperty> getProperties() {
-        return properties;
+    public List<EdmProperty> getProperty() {
+        return property;
     }
 
-    public void setProperties(List<EdmProperty> properties) {
-        this.properties = properties;
+    public void setProperty(List<EdmProperty> property) {
+        this.property = property;
     }
 
-    public List<EdmNavigation> getNavigations() {
-        return navigations;
+    public List<EdmNavigation> getNavigation() {
+        return navigation;
     }
 
-    public void setNavigations(List<EdmNavigation> navigations) {
-        this.navigations = navigations;
+    public void setNavigation(List<EdmNavigation> navigation) {
+        this.navigation = navigation;
+    }
+
+    public List<EdmAction> getAction() {
+        return action;
+    }
+
+    public void setAction(List<EdmAction> action) {
+        this.action = action;
     }
 }

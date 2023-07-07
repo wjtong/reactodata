@@ -1,9 +1,7 @@
 package com.banfftech.reactodata.odata;
 
-import com.banfftech.reactodata.csdl.QuarkCsdlEntitySet;
-import com.banfftech.reactodata.csdl.QuarkCsdlEntityType;
-import com.banfftech.reactodata.csdl.QuarkCsdlNavigationProperty;
-import com.banfftech.reactodata.csdl.QuarkCsdlProperty;
+import com.banfftech.reactodata.Util;
+import com.banfftech.reactodata.csdl.*;
 import com.banfftech.reactodata.edmconfig.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,9 +27,11 @@ public class EdmConfigLoader {
 
         for (EdmEntityType edmEntityType:edmServiceConfig.getEntityTypes()) {
             QuarkCsdlEntityType quarkCsdlEntityType = loadEntityType(edmServiceConfig, edmEntityType);
+            List<CsdlAction> boundActions = loadBoundActions(edmEntityType);
             QuarkCsdlEntitySet quarkCsdlEntitySet = loadEntitySet(edmServiceConfig, quarkCsdlEntityType);
             edmService.addEntityType(quarkCsdlEntityType);
             edmService.addEntitySet(quarkCsdlEntitySet);
+            edmService.addActions(boundActions);
         }
         edmService.setNamespace(edmServiceConfig.getNameSpace());
         return edmService;
@@ -74,8 +74,56 @@ public class EdmConfigLoader {
         return csdlEntityType;
     }
 
+    private List<CsdlAction> loadBoundActions(EdmEntityType edmEntityType) {
+        List<EdmAction> edmActions = edmEntityType.getAction();
+        if (edmActions == null) {
+            return null;
+        }
+        List<CsdlAction> csdlActions = new ArrayList<>();
+        for (EdmAction edmAction:edmActions) {
+            QuarkCsdlAction quarkCsdlAction = new QuarkCsdlAction();
+            quarkCsdlAction.setName(edmAction.getActionName());
+            quarkCsdlAction.setBound(true);
+            FullQualifiedName returnFullQualifiedName;
+            EdmPrimitiveTypeKind returnEdmType = DataMapper.FIELDMAP.get(edmAction.getReturnType());
+            if (returnEdmType != null) {
+                returnFullQualifiedName = returnEdmType.getFullQualifiedName();
+            } else {
+                returnFullQualifiedName = new FullQualifiedName(EdmConst.NAMESPACE, edmAction.getReturnType());
+            }
+            CsdlReturnType csdlReturnType = new CsdlReturnType();
+            csdlReturnType.setType(returnFullQualifiedName);
+            quarkCsdlAction.setReturnType(csdlReturnType);
+            String entitySetPath = Util.lowerFirstChar(edmEntityType.getEntityName());
+            quarkCsdlAction.setEntitySetPath(entitySetPath);
+            quarkCsdlAction.setParameters(loadParameters(edmEntityType, edmAction, entitySetPath, edmAction.isCollection()));
+            csdlActions.add(quarkCsdlAction);
+        }
+        return csdlActions;
+    }
+
+    private List<CsdlParameter> loadParameters(EdmEntityType edmEntityType, EdmAction edmAction, String entitySetPath, boolean collection) {
+        List<EdmParameter> edmParameters = edmAction.getParameter();
+        List<CsdlParameter> result = new ArrayList<>();
+        QuarkCsdlParameter boundParameter = new QuarkCsdlParameter();
+        boundParameter.setName(entitySetPath);
+        boundParameter.setType(new FullQualifiedName(EdmConst.NAMESPACE, edmEntityType.getEntityName()));
+        boundParameter.setNullable(false);
+        boundParameter.setCollection(collection);
+        result.add(boundParameter);
+        for (EdmParameter edmParameter:edmParameters) {
+            QuarkCsdlParameter quarkCsdlParameter = new QuarkCsdlParameter();
+            quarkCsdlParameter.setName(edmParameter.getParameterName());
+            quarkCsdlParameter.setType(DataMapper.FIELDMAP.get(edmParameter.getParameterType()).getFullQualifiedName());
+            quarkCsdlParameter.setNullable(edmParameter.isNullable());
+            quarkCsdlParameter.setCollection(edmParameter.isCollection());
+            result.add(quarkCsdlParameter);
+        }
+        return result;
+    }
+
     private List<CsdlNavigationProperty> loadNavigation(EdmEntityType edmEntityType) {
-        List<EdmNavigation> edmNavigations = edmEntityType.getNavigations();
+        List<EdmNavigation> edmNavigations = edmEntityType.getNavigation();
         if (edmNavigations == null) {
             return null;
         }
@@ -106,7 +154,7 @@ public class EdmConfigLoader {
     }
 
     private List<CsdlProperty> loadProperties(EdmEntityType edmEntityType) {
-        List<EdmProperty> edmProperties = edmEntityType.getProperties();
+        List<EdmProperty> edmProperties = edmEntityType.getProperty();
         List<CsdlProperty> csdlProperties = new ArrayList<>();
         for (EdmProperty edmProperty:edmProperties) {
             QuarkCsdlProperty quarkCsdlProperty = new QuarkCsdlProperty();
