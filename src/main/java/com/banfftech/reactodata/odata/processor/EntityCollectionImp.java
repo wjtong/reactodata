@@ -47,7 +47,7 @@ public class EntityCollectionImp implements org.apache.olingo.server.api.process
     public void readEntityCollection(ODataRequest request, ODataResponse response, UriInfo uriInfo, ContentType responseFormat) throws ODataApplicationException {
         try {
             List<UriResource> uriResourceParts = uriInfo.getUriResourceParts();
-            Map<String, QueryOption> queryOptions = Util.getQuernOptions(uriInfo);
+            Map<String, QueryOption> queryOptions = Util.getQueryOptions(uriInfo);
             QuarkEntity entity = null;
             EdmEntityType targetEntityType = null;
             EdmBindingTarget edmBindingTarget = null;

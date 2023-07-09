@@ -40,7 +40,7 @@ public class EntityImpl implements EntityProcessor {
     public void readEntity(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType contentType) throws ODataApplicationException, ODataLibraryException {
         try {
             List<UriResource> uriResourceParts = uriInfo.getUriResourceParts();
-            Map<String, QueryOption> queryOptions = Util.getQuernOptions(uriInfo);
+            Map<String, QueryOption> queryOptions = Util.getQueryOptions(uriInfo);
             QuarkEntity entity = null;
             EdmEntityType targetEntityType = null;
             EdmBindingTarget edmBindingTarget = null;

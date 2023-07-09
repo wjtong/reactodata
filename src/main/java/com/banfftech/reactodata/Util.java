@@ -95,7 +95,7 @@ public class Util {
         return queryString;
     }
 
-    public static Map<String, QueryOption> getQuernOptions(UriInfo uriInfo) {
+    public static Map<String, QueryOption> getQueryOptions(UriInfo uriInfo) {
         Map<String, QueryOption> queryOptions = new HashMap<>();
         SelectOption selectOption = uriInfo.getSelectOption();
         ExpandOption expandOption = uriInfo.getExpandOption();
