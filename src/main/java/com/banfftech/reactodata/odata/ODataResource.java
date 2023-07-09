@@ -1,6 +1,7 @@
 package com.banfftech.reactodata.odata;
 
 import com.banfftech.reactodata.Util;
+import com.banfftech.reactodata.odata.processor.ActionImpl;
 import com.banfftech.reactodata.odata.processor.EntityCollectionImp;
 import com.banfftech.reactodata.odata.processor.EntityImpl;
 import com.banfftech.reactodata.odata.processor.QuarkProcessor;
@@ -115,6 +116,50 @@ public class ODataResource {
             ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
             ODataHandler handler = odata.createRawHandler(serviceMetadata);
             handler.register(new EntityCollectionImp(quarkProcessor));
+            handler.register(new EntityImpl(quarkProcessor));
+            response = handler.process(request);
+        } catch (NotSupportedException e) {
+            LOGGER.severe("Method not allowed: " + e.getMessage());
+            return Response.status(Response.Status.METHOD_NOT_ALLOWED).build();
+        } catch (Exception e) {
+            LOGGER.severe("Internal server error: " + e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+
+        // Return the response
+        return Response.status(response.getStatusCode())
+                .entity(response.getContent())
+                .type(response.getHeader(HttpHeader.CONTENT_TYPE).toString())
+                .build();
+    }
+    @POST
+    @Path("/{odataPath:.+}")
+    public Response processODataPost(@PathParam("odataPath") String odataPath,
+                                        @QueryParam("$expand") String expand,
+                                        @QueryParam("$select") String select,
+                                        @QueryParam("$orderby") String orderby,
+                                        @QueryParam("$top") String top,
+                                        @QueryParam("$skip") String skip) {
+        ODataRequest request = new ODataRequest();
+        String baseUri = uriInfo.getBaseUri().toString();
+//        String baseUri = "http://localhost:8080/odata.svc";
+        String queryString = Util.getQueryString(null, expand, select, orderby, top, skip);
+        request.setRawBaseUri(baseUri);
+        request.setRawODataPath(odataPath);
+        request.setRawServiceResolutionUri("/");
+        request.setMethod(org.apache.olingo.commons.api.http.HttpMethod.valueOf(HttpMethod.POST));
+        request.setRawRequestUri(baseUri + odataPath + (queryString != null ? "?" + queryString : ""));
+        request.setRawQueryPath(queryString);
+        request.setBody(null);
+
+        ODataResponse response = new ODataResponse();
+
+        try {
+            EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
+            OData odata = OData.newInstance();
+            ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
+            ODataHandler handler = odata.createRawHandler(serviceMetadata);
+            handler.register(new ActionImpl(quarkProcessor));
             handler.register(new EntityImpl(quarkProcessor));
             response = handler.process(request);
         } catch (NotSupportedException e) {

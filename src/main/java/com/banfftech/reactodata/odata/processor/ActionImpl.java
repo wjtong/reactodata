@@ -19,6 +19,12 @@ import java.util.Map;
 
 public class ActionImpl implements ActionVoidProcessor, ActionEntityCollectionProcessor, ActionEntityProcessor,
         ActionPrimitiveProcessor, ActionPrimitiveCollectionProcessor, ActionComplexProcessor, ActionComplexCollectionProcessor{
+    private OData odata;
+    private ServiceMetadata serviceMetadata;
+    private QuarkProcessor quarkProcessor;
+    public ActionImpl(QuarkProcessor quarkProcessor) {
+        this.quarkProcessor = quarkProcessor;
+    }
     @Override
     public void processActionComplexCollection(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType contentType, ContentType contentType1) throws ODataApplicationException, ODataLibraryException {
 
@@ -65,6 +71,7 @@ public class ActionImpl implements ActionVoidProcessor, ActionEntityCollectionPr
 
     @Override
     public void init(OData oData, ServiceMetadata serviceMetadata) {
-
+        this.serviceMetadata = serviceMetadata;
+        this.odata = oData;
     }
 }
