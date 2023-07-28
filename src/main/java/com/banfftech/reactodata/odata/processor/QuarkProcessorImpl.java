@@ -229,6 +229,7 @@ public class QuarkProcessorImpl implements QuarkProcessor{
         //filter、orderby、page
         FilterOption filterOption = queryOptions != null? (FilterOption) queryOptions.get("filterOption"):null;
         OrderByOption orderbyOption = queryOptions != null? (OrderByOption) queryOptions.get("orderByOption"):null;
+        ApplyOption applyOption = queryOptions != null? (ApplyOption) queryOptions.get("applyOption"):null;
 //        if (filterOption != null || orderbyOption != null) {
 //            Util.filterEntityCollection(entityCollection, filterOption, orderbyOption, edmNavigationProperty.getType(),
 //                    edmProvider, delegator, dispatcher, userLogin, locale, csdlNavigationProperty.isFilterByDate());

@@ -5,7 +5,6 @@ import org.apache.olingo.commons.api.edm.*;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.*;
 import org.apache.olingo.server.api.uri.queryoption.expression.*;
-import org.apache.olingo.server.core.uri.UriResourcePrimitivePropertyImpl;
 
 import java.util.*;
 
@@ -36,14 +35,14 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
     private EdmEntityType joinEdmEntityType;
     private String joinAlias;
     private Map<String, String> tableAlias = new HashMap<>();
-    private String fromSql;
+    private String joinSql;
     private String groupBySql;
     private boolean needGroupBy = false;
 
     public OdataExpressionVisitor(EdmEntityType edmEntityType) {
         this.edmEntityType = edmEntityType;
         this.mainTableName = Util.javaNameToDbName(edmEntityType.getName());
-        this.fromSql = mainTableName;
+        this.joinSql = "";
         this.joinEdmEntityType = edmEntityType;
         this.joinAlias = mainTableName;
         this.groupBySql = "";
@@ -160,22 +159,10 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
 
     private EdmEntityType addJoinTable(String lastAlias, EdmEntityType lastEdmEntityType, String navigationName, String alias) {
         Set<String> aliasSet = tableAlias.keySet();
-        EdmNavigationProperty edmNavigationProperty = lastEdmEntityType.getNavigationProperty(navigationName);
-        if (edmNavigationProperty != null) {
-            EdmEntityType targetEntityType = edmNavigationProperty.getType();
-            String targetTableName = Util.javaNameToDbName(targetEntityType.getName());
-            List<EdmReferentialConstraint> referentialConstraints = edmNavigationProperty.getReferentialConstraints();
-            EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
-            String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
-            String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
-            if (!aliasSet.contains(alias)) {
-                fromSql = fromSql + " left join " + targetTableName + " " + alias + " on " + lastAlias + "." + sourceColumnName + "=" + alias + "." + targetColumnName;
-                tableAlias.put(alias, targetTableName);
-            }
-            return targetEntityType;
-        } else {
-            throw new RuntimeException("not support");
+        if (!aliasSet.contains(alias)) {
+            joinSql = joinSql + Util.addJoinTable(joinSql, lastAlias, lastEdmEntityType, navigationName, alias);
         }
+        return lastEdmEntityType.getNavigationProperty(navigationName).getType();
     }
 
     @Override
@@ -203,8 +190,8 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
         return null;
     }
 
-    public String getFromSql() {
-        return fromSql;
+    public String getJoinSql() {
+        return joinSql;
     }
 
     public String getGroupBySql() {

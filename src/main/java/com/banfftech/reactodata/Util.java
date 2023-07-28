@@ -2,11 +2,14 @@ package com.banfftech.reactodata;
 
 import com.banfftech.reactodata.edmconfig.EdmConst;
 import com.banfftech.reactodata.odata.QuarkEntity;
+import com.banfftech.reactodata.service.SqlHolder;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.data.ValueType;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
+import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
+import org.apache.olingo.commons.api.edm.EdmReferentialConstraint;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.queryoption.*;
@@ -229,5 +232,24 @@ public class Util {
             index++;
         }
         return sqlFields;
+    }
+    public static EdmEntityType addJoinTable(SqlHolder sqlHolder, String lastAlias, EdmEntityType lastEdmEntityType, String navigationName, String alias) {
+        EdmNavigationProperty edmNavigationProperty = lastEdmEntityType.getNavigationProperty(navigationName);
+        if (edmNavigationProperty != null) {
+            EdmEntityType targetEntityType = edmNavigationProperty.getType();
+            String targetTableName = Util.javaNameToDbName(targetEntityType.getName());
+            if (alias == null) {
+                alias = targetTableName;
+            }
+            List<EdmReferentialConstraint> referentialConstraints = edmNavigationProperty.getReferentialConstraints();
+            EdmReferentialConstraint referentialConstraint = referentialConstraints.get(0); // only support one constraint
+            String sourceColumnName = Util.javaNameToDbName(referentialConstraint.getPropertyName());
+            String targetColumnName = Util.javaNameToDbName(referentialConstraint.getReferencedPropertyName());
+            String joinSql = "left join " + targetTableName + " " + alias + " on " + lastAlias + "." + sourceColumnName + "=" + alias + "." + targetColumnName + " ";
+            sqlHolder.addJoin(joinSql);
+            return targetEntityType;
+        } else {
+            throw new RuntimeException("not support");
+        }
     }
 }

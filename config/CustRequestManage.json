@@ -41,6 +41,18 @@
         {"name": "partyId", "type": "id", "required": true },
         {"name": "roleTypeId", "type": "id", "required": true }
       ]
+    },
+    {
+      "entity-name": "OrderItemFact",
+      "property": [
+        {"name": "orderId", "type": "id", "required": true },
+        {"name": "orderItemSeqId", "type": "id", "required": true },
+        {"name": "productId", "type": "id", "required": true },
+        {"name": "partyId", "type": "id", "required": true },
+        {"name": "quantity", "type": "fixed-point", "required": true },
+        {"name": "amount", "type": "currency-amount", "required": true },
+        {"name": "count", "type": "currency-amount", "required": true }
+      ]
     }
   ]
 }

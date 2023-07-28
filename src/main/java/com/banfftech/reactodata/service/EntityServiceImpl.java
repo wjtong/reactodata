@@ -17,14 +17,19 @@ import jakarta.inject.Inject;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
-import org.apache.olingo.server.api.uri.queryoption.FilterOption;
-import org.apache.olingo.server.api.uri.queryoption.QueryOption;
-import org.apache.olingo.server.api.uri.queryoption.SelectOption;
+import org.apache.olingo.server.api.uri.UriResource;
+import org.apache.olingo.server.api.uri.queryoption.*;
+import org.apache.olingo.server.api.uri.queryoption.apply.AggregateExpression;
+import org.apache.olingo.server.api.uri.queryoption.apply.Filter;
+import org.apache.olingo.server.api.uri.queryoption.apply.GroupBy;
+import org.apache.olingo.server.api.uri.queryoption.apply.GroupByItem;
+import org.apache.olingo.server.api.uri.queryoption.expression.Expression;
 import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitException;
+import org.apache.olingo.server.api.uri.queryoption.expression.Member;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.*;
-import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class EntityServiceImpl implements EntityService {
@@ -39,24 +44,32 @@ public class EntityServiceImpl implements EntityService {
         String tableName = Util.javaNameToDbName(edmEntityType.getName());
         FilterOption filterOption = (FilterOption) queryOptions.get("filterOption");
         SelectOption selectOption = (SelectOption) queryOptions.get("selectOption");
+        ApplyOption applyOption = (ApplyOption) queryOptions.get("applyOption");
         OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
         String sql;
-        if (selectOption == null) {
-            sql = "select " + tableName + ".* from ";
-        } else {
+        SqlHolder sqlHolder = new SqlHolder(tableName);
+        if (selectOption != null) {
             List<String> selectFields = Util.getSelectOptionFields(selectOption);
-            String joinSqlFields = Util.joinSqlFields(selectFields, tableName);
-            sql = "select " + joinSqlFields + " from ";
+            String fields = Util.joinSqlFields(selectFields, tableName);
+            sqlHolder.setSelectSql(fields);
         }
-        String condition = null;
+        String conditionSql = "";
+        String groupBySql = "";
+        String joinSql = "";
+        sql = sql + tableName + " ";
         try {
             if (filterOption != null) {
-                condition = (String) filterOption.getExpression().accept(expressionVisitor);
-                sql = sql + expressionVisitor.getFromSql();
-                sql = sql + " where " + condition + expressionVisitor.getGroupBySql();
-            } else {
-                sql = sql + tableName;
+                String filterExpressionSql = (String) filterOption.getExpression().accept(expressionVisitor);
+                sqlHolder.addCondition(filterExpressionSql);
+                joinSql = expressionVisitor.getJoinSql();
+                sqlHolder.addJoin(joinSql);
+                groupBySql = expressionVisitor.getGroupBySql();
+                sqlHolder.addGroupBy(groupBySql);
             }
+            if (applyOption != null) {
+                applySql(edmEntityType, applyOption, tableName, sql, joinSql, conditionSql, groupBySql);
+            }
+            sql = sql + joinSql + conditionSql + groupBySql;
             Query<RowSet<Row>> query = pgClient.query(sql);
             Log.info(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
@@ -68,6 +81,85 @@ public class EntityServiceImpl implements EntityService {
             throw new ODataApplicationException(e.getMessage(),
                     HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
         }
+    }
+
+    private void applySql(EdmEntityType edmEntityType, ApplyOption applyOption, SqlHolder sqlHolder)
+            throws ExpressionVisitException, ODataApplicationException {
+        String applySql = "";
+        List<ApplyItem> applyItems = applyOption.getApplyItems();
+        for (ApplyItem applyItem:applyItems) {
+            if (applyItem instanceof Filter) {
+                Filter filter = (Filter) applyItem;
+
+                FilterOption filterOption = ((Filter) applyItem).getFilterOption();
+                OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
+                String filterExpressionSql = (String) filterOption.getExpression().accept(expressionVisitor);
+                sqlHolder.addCondition(filterExpressionSql);
+                sqlHolder.addJoin(expressionVisitor.getJoinSql());
+                sqlHolder.addGroupBy(expressionVisitor.getGroupBySql());
+            }
+            if (applyItem instanceof GroupBy) {
+                GroupBy groupBy = (GroupBy) applyItem;
+                List<GroupByItem> groupByItems = groupBy.getGroupByItems();
+                for (GroupByItem groupByItem : groupByItems) {
+                    List<UriResource> path = groupByItem.getPath();
+                    if (path.size() == 1) {
+                        String segmentValue = path.get(0).getSegmentValue();
+                        joinSql = Util.addJoinTable(joinSql, tableName, edmEntityType, segmentValue, null);
+                    } else {
+                        //多段式的子对象字段
+                        //add MemberEntity
+                        UriResource groupByProperty = path.get(path.size() - 1);
+                        path = path.subList(0, path.size() - 1);
+                        List<String> resourceParts = path.stream().map(UriResource::getSegmentValue).collect(Collectors.toList());
+                        String memberAlias = dynamicViewHolder.addMultiParts(resourceParts, null);
+                        dynamicViewEntity.addAlias(memberAlias, memberAlias + groupByProperty.getSegmentValue(), groupByProperty.getSegmentValue(), null, false, true, null);
+                        if (UtilValidate.isEmpty(applySelect)) {
+                            applySelect = new HashSet<>();
+                        }
+                        applySelect.add(memberAlias + groupByProperty.getSegmentValue());
+                    }
+                }
+                for (GroupByItem groupByItem:groupByItems) {
+                    if (groupByItem instanceof GroupByRollup) {
+                        GroupByRollup groupByRollup = (GroupByRollup) groupByItem;
+                        List<GroupByItem> groupByRollupItems = groupByRollup.getGroupByItems();
+                        for (GroupByItem groupByRollupItem:groupByRollupItems) {
+                            if (groupByRollupItem instanceof Member) {
+                                Member member = (Member) groupByRollupItem;
+                                String memberName = member.getResourcePath().getUriResourceParts().get(0).toString();
+                                String columnName = Util.javaNameToDbName(memberName);
+                                applySql = applySql + columnName + ",";
+                            }
+                        }
+                    }
+                }
+                applySql = applySql.substring(0, applySql.length() - 1);
+                applySql = applySql + " group by ";
+                for (GroupByItem groupByItem:groupByItems) {
+                    if (groupByItem instanceof Member) {
+                        Member member = (Member) groupByItem;
+                        String memberName = member.getResourcePath().getUriResourceParts().get(0).toString();
+                        String columnName = Util.javaNameToDbName(memberName);
+                        applySql = applySql + columnName + ",";
+                    }
+                }
+                applySql = applySql.substring(0, applySql.length() - 1);
+            }
+            if (applyItem instanceof AggregateExpression) {
+                AggregateExpression aggregateExpression = (AggregateExpression) applyItem;
+                String aggregate = aggregateExpression.getAggregate();
+                String alias = aggregateExpression.getAlias();
+                Expression expression = aggregateExpression.getExpression();
+                if (expression instanceof Member) {
+                    Member member = (Member) expression;
+                    String memberName = member.getResourcePath().getUriResourceParts().get(0).toString();
+                    String columnName = Util.javaNameToDbName(memberName);
+                    applySql = applySql + "select " + aggregate + "(" + columnName + ") as " + alias + " from " + Util.javaNameToDbName(edmEntityType.getName());
+                }
+            }
+        }
+        return applySql;
     }
 
     @Override
@@ -169,6 +261,18 @@ public class EntityServiceImpl implements EntityService {
                 .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9040', '9030', 'SALES_REP')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9050', '9030', 'SHIPMENT_CLERK')").execute())
                 .flatMap(r -> pgClient.query("INSERT INTO party_role VALUES ('9060', '9040', 'SHIPMENT_CLERK')").execute())
+                .await().indefinitely();
+        pgClient.query("DROP TABLE IF EXISTS order_item_fact").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE order_item_fact (id TEXT PRIMARY KEY, order_id TEXT, order_item_seq_id TEXT, " +
+                        "product_id TEXT, party_id TEXT, quantity NUMERIC(18,6), amount NUMERIC(18,6), count INTEGER)").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO order_item_fact VALUES ('9000', '9000', '0001', '9000', '9000', " +
+                        "12, 2400, 1)").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO order_item_fact VALUES ('9010', '9000', '0002', '9010', '9000', " +
+                        "8, 720, 1)").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO order_item_fact VALUES ('9020', '9010', '0001', '9000', '9010', " +
+                        "15, 3000, 1)").execute())
+                .flatMap(r -> pgClient.query("INSERT INTO order_item_fact VALUES ('9030', '9010', '0002', '9010', '9010', " +
+                        "6, 540, 1)").execute())
                 .await().indefinitely();
     }
 }

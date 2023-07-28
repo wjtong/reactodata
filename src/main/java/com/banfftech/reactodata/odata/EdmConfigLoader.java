@@ -159,7 +159,12 @@ public class EdmConfigLoader {
         for (EdmProperty edmProperty:edmProperties) {
             QuarkCsdlProperty quarkCsdlProperty = new QuarkCsdlProperty();
             quarkCsdlProperty.setName(edmProperty.getPropertyName());
-            quarkCsdlProperty.setType(DataMapper.FIELDMAP.get(edmProperty.getPropertyType()).getFullQualifiedName());
+            EdmPrimitiveTypeKind edmPrimitiveTypeKind = DataMapper.FIELDMAP.get(edmProperty.getPropertyType());
+            quarkCsdlProperty.setType(edmPrimitiveTypeKind.getFullQualifiedName());
+            if (edmPrimitiveTypeKind.equals(EdmPrimitiveTypeKind.Decimal)) {
+                quarkCsdlProperty.setPrecision(18);
+                quarkCsdlProperty.setScale(6);
+            }
             csdlProperties.add(quarkCsdlProperty);
         }
         return csdlProperties;
