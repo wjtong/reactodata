@@ -236,6 +236,9 @@ public class Util {
     public static EdmEntityType addJoinTable(SqlHolder sqlHolder, String lastAlias, EdmEntityType lastEdmEntityType, String navigationName, String alias) {
         EdmNavigationProperty edmNavigationProperty = lastEdmEntityType.getNavigationProperty(navigationName);
         if (edmNavigationProperty != null) {
+            if (lastAlias == null) {
+                lastAlias = Util.javaNameToDbName(lastEdmEntityType.getName());
+            }
             EdmEntityType targetEntityType = edmNavigationProperty.getType();
             String targetTableName = Util.javaNameToDbName(targetEntityType.getName());
             if (alias == null) {

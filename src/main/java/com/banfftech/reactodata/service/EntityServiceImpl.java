@@ -19,10 +19,7 @@ import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriResource;
 import org.apache.olingo.server.api.uri.queryoption.*;
-import org.apache.olingo.server.api.uri.queryoption.apply.AggregateExpression;
-import org.apache.olingo.server.api.uri.queryoption.apply.Filter;
-import org.apache.olingo.server.api.uri.queryoption.apply.GroupBy;
-import org.apache.olingo.server.api.uri.queryoption.apply.GroupByItem;
+import org.apache.olingo.server.api.uri.queryoption.apply.*;
 import org.apache.olingo.server.api.uri.queryoption.expression.Expression;
 import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitException;
 import org.apache.olingo.server.api.uri.queryoption.expression.Member;
@@ -105,33 +102,18 @@ public class EntityServiceImpl implements EntityService {
                     List<UriResource> path = groupByItem.getPath();
                     if (path.size() == 1) {
                         String segmentValue = path.get(0).getSegmentValue();
-                        joinSql = Util.addJoinTable(joinSql, tableName, edmEntityType, segmentValue, null);
+                        Util.addJoinTable(sqlHolder, null, edmEntityType, segmentValue, null);
                     } else {
                         //多段式的子对象字段
                         //add MemberEntity
                         UriResource groupByProperty = path.get(path.size() - 1);
                         path = path.subList(0, path.size() - 1);
                         List<String> resourceParts = path.stream().map(UriResource::getSegmentValue).collect(Collectors.toList());
-                        String memberAlias = dynamicViewHolder.addMultiParts(resourceParts, null);
-                        dynamicViewEntity.addAlias(memberAlias, memberAlias + groupByProperty.getSegmentValue(), groupByProperty.getSegmentValue(), null, false, true, null);
-                        if (UtilValidate.isEmpty(applySelect)) {
-                            applySelect = new HashSet<>();
+                        EdmEntityType lastEdmEntityType = edmEntityType;
+                        for(String resourcePart:resourceParts) {
+                            lastEdmEntityType = Util.addJoinTable(sqlHolder, null, lastEdmEntityType, resourcePart, null);
                         }
-                        applySelect.add(memberAlias + groupByProperty.getSegmentValue());
-                    }
-                }
-                for (GroupByItem groupByItem:groupByItems) {
-                    if (groupByItem instanceof GroupByRollup) {
-                        GroupByRollup groupByRollup = (GroupByRollup) groupByItem;
-                        List<GroupByItem> groupByRollupItems = groupByRollup.getGroupByItems();
-                        for (GroupByItem groupByRollupItem:groupByRollupItems) {
-                            if (groupByRollupItem instanceof Member) {
-                                Member member = (Member) groupByRollupItem;
-                                String memberName = member.getResourcePath().getUriResourceParts().get(0).toString();
-                                String columnName = Util.javaNameToDbName(memberName);
-                                applySql = applySql + columnName + ",";
-                            }
-                        }
+                        sqlHolder.addGroupBy(groupByProperty.getSegmentValue());
                     }
                 }
                 applySql = applySql.substring(0, applySql.length() - 1);
@@ -145,21 +127,55 @@ public class EntityServiceImpl implements EntityService {
                     }
                 }
                 applySql = applySql.substring(0, applySql.length() - 1);
-            }
-            if (applyItem instanceof AggregateExpression) {
-                AggregateExpression aggregateExpression = (AggregateExpression) applyItem;
-                String aggregate = aggregateExpression.getAggregate();
-                String alias = aggregateExpression.getAlias();
-                Expression expression = aggregateExpression.getExpression();
-                if (expression instanceof Member) {
-                    Member member = (Member) expression;
-                    String memberName = member.getResourcePath().getUriResourceParts().get(0).toString();
-                    String columnName = Util.javaNameToDbName(memberName);
-                    applySql = applySql + "select " + aggregate + "(" + columnName + ") as " + alias + " from " + Util.javaNameToDbName(edmEntityType.getName());
+            } // end if (applyItem instanceof GroupBy)
+            if (applyItem instanceof Aggregate) {
+                Aggregate aggregate = (Aggregate) applyItem;
+                for (AggregateExpression aggregateExpression:aggregate.getExpressions()) {
+                    //聚合函数类型
+                    AggregateExpression.StandardMethod standardMethod = aggregateExpression.getStandardMethod();
+                    //返回字段别名
+                    String expressionAlias = aggregateExpression.getAlias();
+                    if (isAggregateCount(aggregateExpression)) {
+                        //这里处理aggregate的$count，使用统计主键数量的方式实现，多主键暂不支持
+                        List<String> pkFieldNames = modelEntity.getPkFieldNames();
+                        if (pkFieldNames.size() > 1) {
+                            throw new OfbizODataException("Count queries with multiple primary keys are not supported.");
+                        }
+                        dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, modelEntity.getFirstPkFieldName(), null, false, null, "count");
+                    } else {
+                        if (UtilValidate.isNotEmpty(standardMethod)) {
+                            //expression 字段名称或者子对象名称
+                            String expression = aggregateExpression.getExpression().toString();
+                            expression = expression.substring(1, expression.length() - 1);
+                            if (standardMethod.equals(AggregateExpression.StandardMethod.COUNT_DISTINCT)) {
+                                List<String> relationKeyList = Util.getRelationKey(modelEntity, expression);
+                                if (relationKeyList.size() > 1) {
+                                    throw new OfbizODataException("Multiple field association is not supported.");
+                                }
+                                dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, relationKeyList.get(0), null, false, null, AGGREGATE_MAP.get(standardMethod));
+                            } else {
+                                dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, expression, null, false, null, AGGREGATE_MAP.get(standardMethod));
+                            }
+                        } else {
+                            //default sum
+                            dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, expressionAlias, null, false, null, "sum");
+                        }
+                    }
+                    if (applySelect == null) {
+                        applySelect = new HashSet<>();
+                    }
+                    applySelect.add(expressionAlias);
                 }
             }
         }
         return applySql;
+    }
+    private boolean isAggregateCount(AggregateExpression aggregateExpression) {
+        List<UriResource> path = aggregateExpression.getPath();
+        if (path != null && path.size() > 0) {
+            return "$count".equals(path.get(0).getSegmentValue());
+        }
+        return false;
     }
 
     @Override
