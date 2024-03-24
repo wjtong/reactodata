@@ -1,6 +1,7 @@
 package com.banfftech.reactodata.odata.processor;
 
 import com.banfftech.reactodata.Util;
+import com.banfftech.reactodata.service.SqlHolder;
 import org.apache.olingo.commons.api.edm.*;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.*;
@@ -37,12 +38,14 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
     private Map<String, String> tableAlias = new HashMap<>();
     private String joinSql;
     private String groupBySql;
+    private SqlHolder sqlHolder;
     private boolean needGroupBy = false;
 
     public OdataExpressionVisitor(EdmEntityType edmEntityType) {
         this.edmEntityType = edmEntityType;
         this.mainTableName = Util.javaNameToDbName(edmEntityType.getName());
         this.joinSql = "";
+        this.sqlHolder = new SqlHolder(mainTableName);
         this.joinEdmEntityType = edmEntityType;
         this.joinAlias = mainTableName;
         this.groupBySql = "";
@@ -160,7 +163,8 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
     private EdmEntityType addJoinTable(String lastAlias, EdmEntityType lastEdmEntityType, String navigationName, String alias) {
         Set<String> aliasSet = tableAlias.keySet();
         if (!aliasSet.contains(alias)) {
-            joinSql = joinSql + Util.addJoinTable(joinSql, lastAlias, lastEdmEntityType, navigationName, alias);
+//            joinSql = joinSql + Util.addJoinTable(joinSql, lastAlias, lastEdmEntityType, navigationName, alias);
+            return Util.addJoinTable(sqlHolder, lastAlias, lastEdmEntityType, navigationName, alias);
         }
         return lastEdmEntityType.getNavigationProperty(navigationName).getType();
     }
@@ -191,7 +195,7 @@ public class OdataExpressionVisitor implements ExpressionVisitor {
     }
 
     public String getJoinSql() {
-        return joinSql;
+        return sqlHolder.getJoinSql();
     }
 
     public String getGroupBySql() {

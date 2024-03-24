@@ -54,5 +54,11 @@
         {"name": "count", "type": "currency-amount", "required": true }
       ]
     }
-  ]
+  ],
+  "container": {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3",
+    "key4": "value4"
+  }
 }

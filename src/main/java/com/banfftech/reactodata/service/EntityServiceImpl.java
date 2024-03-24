@@ -43,7 +43,7 @@ public class EntityServiceImpl implements EntityService {
         SelectOption selectOption = (SelectOption) queryOptions.get("selectOption");
         ApplyOption applyOption = (ApplyOption) queryOptions.get("applyOption");
         OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
-        String sql;
+        String sql = "";
         SqlHolder sqlHolder = new SqlHolder(tableName);
         if (selectOption != null) {
             List<String> selectFields = Util.getSelectOptionFields(selectOption);
@@ -64,7 +64,7 @@ public class EntityServiceImpl implements EntityService {
                 sqlHolder.addGroupBy(groupBySql);
             }
             if (applyOption != null) {
-                applySql(edmEntityType, applyOption, tableName, sql, joinSql, conditionSql, groupBySql);
+//                applySql(edmEntityType, applyOption, sqlHolder);
             }
             sql = sql + joinSql + conditionSql + groupBySql;
             Query<RowSet<Row>> query = pgClient.query(sql);
@@ -80,96 +80,96 @@ public class EntityServiceImpl implements EntityService {
         }
     }
 
-    private void applySql(EdmEntityType edmEntityType, ApplyOption applyOption, SqlHolder sqlHolder)
-            throws ExpressionVisitException, ODataApplicationException {
-        String applySql = "";
-        List<ApplyItem> applyItems = applyOption.getApplyItems();
-        for (ApplyItem applyItem:applyItems) {
-            if (applyItem instanceof Filter) {
-                Filter filter = (Filter) applyItem;
-
-                FilterOption filterOption = ((Filter) applyItem).getFilterOption();
-                OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
-                String filterExpressionSql = (String) filterOption.getExpression().accept(expressionVisitor);
-                sqlHolder.addCondition(filterExpressionSql);
-                sqlHolder.addJoin(expressionVisitor.getJoinSql());
-                sqlHolder.addGroupBy(expressionVisitor.getGroupBySql());
-            }
-            if (applyItem instanceof GroupBy) {
-                GroupBy groupBy = (GroupBy) applyItem;
-                List<GroupByItem> groupByItems = groupBy.getGroupByItems();
-                for (GroupByItem groupByItem : groupByItems) {
-                    List<UriResource> path = groupByItem.getPath();
-                    if (path.size() == 1) {
-                        String segmentValue = path.get(0).getSegmentValue();
-                        Util.addJoinTable(sqlHolder, null, edmEntityType, segmentValue, null);
-                    } else {
-                        //多段式的子对象字段
-                        //add MemberEntity
-                        UriResource groupByProperty = path.get(path.size() - 1);
-                        path = path.subList(0, path.size() - 1);
-                        List<String> resourceParts = path.stream().map(UriResource::getSegmentValue).collect(Collectors.toList());
-                        EdmEntityType lastEdmEntityType = edmEntityType;
-                        for(String resourcePart:resourceParts) {
-                            lastEdmEntityType = Util.addJoinTable(sqlHolder, null, lastEdmEntityType, resourcePart, null);
-                        }
-                        sqlHolder.addGroupBy(groupByProperty.getSegmentValue());
-                    }
-                }
-                applySql = applySql.substring(0, applySql.length() - 1);
-                applySql = applySql + " group by ";
-                for (GroupByItem groupByItem:groupByItems) {
-                    if (groupByItem instanceof Member) {
-                        Member member = (Member) groupByItem;
-                        String memberName = member.getResourcePath().getUriResourceParts().get(0).toString();
-                        String columnName = Util.javaNameToDbName(memberName);
-                        applySql = applySql + columnName + ",";
-                    }
-                }
-                applySql = applySql.substring(0, applySql.length() - 1);
-            } // end if (applyItem instanceof GroupBy)
-            if (applyItem instanceof Aggregate) {
-                Aggregate aggregate = (Aggregate) applyItem;
-                for (AggregateExpression aggregateExpression:aggregate.getExpressions()) {
-                    //聚合函数类型
-                    AggregateExpression.StandardMethod standardMethod = aggregateExpression.getStandardMethod();
-                    //返回字段别名
-                    String expressionAlias = aggregateExpression.getAlias();
-                    if (isAggregateCount(aggregateExpression)) {
-                        //这里处理aggregate的$count，使用统计主键数量的方式实现，多主键暂不支持
-                        List<String> pkFieldNames = modelEntity.getPkFieldNames();
-                        if (pkFieldNames.size() > 1) {
-                            throw new OfbizODataException("Count queries with multiple primary keys are not supported.");
-                        }
-                        dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, modelEntity.getFirstPkFieldName(), null, false, null, "count");
-                    } else {
-                        if (UtilValidate.isNotEmpty(standardMethod)) {
-                            //expression 字段名称或者子对象名称
-                            String expression = aggregateExpression.getExpression().toString();
-                            expression = expression.substring(1, expression.length() - 1);
-                            if (standardMethod.equals(AggregateExpression.StandardMethod.COUNT_DISTINCT)) {
-                                List<String> relationKeyList = Util.getRelationKey(modelEntity, expression);
-                                if (relationKeyList.size() > 1) {
-                                    throw new OfbizODataException("Multiple field association is not supported.");
-                                }
-                                dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, relationKeyList.get(0), null, false, null, AGGREGATE_MAP.get(standardMethod));
-                            } else {
-                                dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, expression, null, false, null, AGGREGATE_MAP.get(standardMethod));
-                            }
-                        } else {
-                            //default sum
-                            dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, expressionAlias, null, false, null, "sum");
-                        }
-                    }
-                    if (applySelect == null) {
-                        applySelect = new HashSet<>();
-                    }
-                    applySelect.add(expressionAlias);
-                }
-            }
-        }
-        return applySql;
-    }
+//    private void applySql(EdmEntityType edmEntityType, ApplyOption applyOption, SqlHolder sqlHolder)
+//            throws ExpressionVisitException, ODataApplicationException {
+//        String applySql = "";
+//        List<ApplyItem> applyItems = applyOption.getApplyItems();
+//        for (ApplyItem applyItem:applyItems) {
+//            if (applyItem instanceof Filter) {
+//                Filter filter = (Filter) applyItem;
+//
+//                FilterOption filterOption = ((Filter) applyItem).getFilterOption();
+//                OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
+//                String filterExpressionSql = (String) filterOption.getExpression().accept(expressionVisitor);
+//                sqlHolder.addCondition(filterExpressionSql);
+//                sqlHolder.addJoin(expressionVisitor.getJoinSql());
+//                sqlHolder.addGroupBy(expressionVisitor.getGroupBySql());
+//            }
+//            if (applyItem instanceof GroupBy) {
+//                GroupBy groupBy = (GroupBy) applyItem;
+//                List<GroupByItem> groupByItems = groupBy.getGroupByItems();
+//                for (GroupByItem groupByItem : groupByItems) {
+//                    List<UriResource> path = groupByItem.getPath();
+//                    if (path.size() == 1) {
+//                        String segmentValue = path.get(0).getSegmentValue();
+//                        Util.addJoinTable(sqlHolder, null, edmEntityType, segmentValue, null);
+//                    } else {
+//                        //多段式的子对象字段
+//                        //add MemberEntity
+//                        UriResource groupByProperty = path.get(path.size() - 1);
+//                        path = path.subList(0, path.size() - 1);
+//                        List<String> resourceParts = path.stream().map(UriResource::getSegmentValue).collect(Collectors.toList());
+//                        EdmEntityType lastEdmEntityType = edmEntityType;
+//                        for(String resourcePart:resourceParts) {
+//                            lastEdmEntityType = Util.addJoinTable(sqlHolder, null, lastEdmEntityType, resourcePart, null);
+//                        }
+//                        sqlHolder.addGroupBy(groupByProperty.getSegmentValue());
+//                    }
+//                }
+//                applySql = applySql.substring(0, applySql.length() - 1);
+//                applySql = applySql + " group by ";
+//                for (GroupByItem groupByItem:groupByItems) {
+//                    if (groupByItem instanceof Member) {
+//                        Member member = (Member) groupByItem;
+//                        String memberName = member.getResourcePath().getUriResourceParts().get(0).toString();
+//                        String columnName = Util.javaNameToDbName(memberName);
+//                        applySql = applySql + columnName + ",";
+//                    }
+//                }
+//                applySql = applySql.substring(0, applySql.length() - 1);
+//            } // end if (applyItem instanceof GroupBy)
+//            if (applyItem instanceof Aggregate) {
+//                Aggregate aggregate = (Aggregate) applyItem;
+//                for (AggregateExpression aggregateExpression:aggregate.getExpressions()) {
+//                    //聚合函数类型
+//                    AggregateExpression.StandardMethod standardMethod = aggregateExpression.getStandardMethod();
+//                    //返回字段别名
+//                    String expressionAlias = aggregateExpression.getAlias();
+//                    if (isAggregateCount(aggregateExpression)) {
+//                        //这里处理aggregate的$count，使用统计主键数量的方式实现，多主键暂不支持
+//                        List<String> pkFieldNames = modelEntity.getPkFieldNames();
+//                        if (pkFieldNames.size() > 1) {
+//                            throw new OfbizODataException("Count queries with multiple primary keys are not supported.");
+//                        }
+//                        dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, modelEntity.getFirstPkFieldName(), null, false, null, "count");
+//                    } else {
+//                        if (UtilValidate.isNotEmpty(standardMethod)) {
+//                            //expression 字段名称或者子对象名称
+//                            String expression = aggregateExpression.getExpression().toString();
+//                            expression = expression.substring(1, expression.length() - 1);
+//                            if (standardMethod.equals(AggregateExpression.StandardMethod.COUNT_DISTINCT)) {
+//                                List<String> relationKeyList = Util.getRelationKey(modelEntity, expression);
+//                                if (relationKeyList.size() > 1) {
+//                                    throw new OfbizODataException("Multiple field association is not supported.");
+//                                }
+//                                dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, relationKeyList.get(0), null, false, null, AGGREGATE_MAP.get(standardMethod));
+//                            } else {
+//                                dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, expression, null, false, null, AGGREGATE_MAP.get(standardMethod));
+//                            }
+//                        } else {
+//                            //default sum
+//                            dynamicViewEntity.addAlias(ofbizCsdlEntityType.getName(), expressionAlias, expressionAlias, null, false, null, "sum");
+//                        }
+//                    }
+//                    if (applySelect == null) {
+//                        applySelect = new HashSet<>();
+//                    }
+//                    applySelect.add(expressionAlias);
+//                }
+//            }
+//        }
+//        return applySql;
+//    }
     private boolean isAggregateCount(AggregateExpression aggregateExpression) {
         List<UriResource> path = aggregateExpression.getPath();
         if (path != null && path.size() > 0) {

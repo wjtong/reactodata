@@ -3,6 +3,7 @@ package com.banfftech.reactodata.edmconfig;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.Map;
 
 public class EdmServiceConfig {
     @JsonProperty("service-name")
@@ -13,6 +14,16 @@ public class EdmServiceConfig {
 
     @JsonProperty("entity-types")
     private List<EdmEntityType> entityTypes;
+    @JsonProperty("container")
+    private Map<String, Object> container;
+
+    public Map<String, Object> getContainer() {
+        return container;
+    }
+
+    public void setContainer(Map<String, Object> container) {
+        this.container = container;
+    }
 
     public String getServiceName() {
         return serviceName;

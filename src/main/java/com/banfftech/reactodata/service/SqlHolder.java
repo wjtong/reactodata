@@ -112,6 +112,7 @@ public class SqlHolder {
     }
 
     public String getSql() {
+        sql = "select " + selectSql + " from " + tableName + " " + joinSql + " " + whereSql + " " + groupBySql + " " + orderBySql + " " + limitSql + " " + offsetSql + " " + countSql + ";" ;
         return sql;
     }
 
