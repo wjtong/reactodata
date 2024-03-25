@@ -34,6 +34,10 @@ public class QuarkProcessorImpl implements QuarkProcessor{
     public EntityCollection findList(EdmEntityType edmEntityType, Map<String,
             QueryOption> queryOptions) throws ODataApplicationException {
         String entityName = edmEntityType.getName();
+        if (queryOptions != null && queryOptions.get("expandOption") != null) {
+            ExpandOption expandOption = (ExpandOption) queryOptions.get("expandOption");
+            List<ExpandItem> expandItems = expandOption.getExpandItems();
+        }
         List<QuarkEntity> quarkEntities = entityService.findEntity(edmEntityType, queryOptions);
         EntityCollection entityCollection = new EntityCollection();
         entityCollection.setCount(quarkEntities.size());

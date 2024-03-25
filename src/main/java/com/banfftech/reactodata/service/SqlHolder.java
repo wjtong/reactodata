@@ -3,13 +3,13 @@ package com.banfftech.reactodata.service;
 public class SqlHolder {
     String selectSql;
     String tableName;
-    String joinSql = null;
-    String whereSql = null;
-    String groupBySql = null;
-    String orderBySql = null;
-    String limitSql = null;
-    String offsetSql = null;
-    String countSql = null;
+    String joinSql = "";
+    String whereSql = "";
+    String groupBySql = "";
+    String orderBySql = "";
+    String limitSql = "";
+    String offsetSql = "";
+    String countSql = "";
     String sql;
 
     public SqlHolder(String tableName) {
@@ -18,22 +18,18 @@ public class SqlHolder {
     }
 
     public void addCondition(String condition) {
-        if (whereSql == null) {
-            whereSql = "where " + condition;
+        if (whereSql == null || whereSql.equals("")) {
+            whereSql = " where " + condition;
         } else {
             whereSql += " and " + condition;
         }
     }
     public void addJoin(String join) {
-        if (joinSql == null) {
-            joinSql = join;
-        } else {
-            joinSql += " " + join;
-        }
+        joinSql += " " + join;
     }
     public void addGroupBy(String groupBy) {
-        if (groupBySql == null) {
-            groupBySql = "group by " + groupBy;
+        if (groupBySql == null || groupBySql.equals("")) {
+            groupBySql = " group by " + groupBy;
         } else {
             groupBySql += " " + groupBy;
         }
@@ -112,7 +108,7 @@ public class SqlHolder {
     }
 
     public String getSql() {
-        sql = "select " + selectSql + " from " + tableName + " " + joinSql + " " + whereSql + " " + groupBySql + " " + orderBySql + " " + limitSql + " " + offsetSql + " " + countSql + ";" ;
+        sql = "select " + selectSql + " from " + tableName + joinSql + whereSql + groupBySql + orderBySql + limitSql + offsetSql + countSql + ";" ;
         return sql;
     }
 

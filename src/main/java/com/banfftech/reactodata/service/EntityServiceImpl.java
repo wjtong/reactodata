@@ -15,9 +15,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
+import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriResource;
+import org.apache.olingo.server.api.uri.UriResourceNavigation;
 import org.apache.olingo.server.api.uri.queryoption.*;
 import org.apache.olingo.server.api.uri.queryoption.apply.*;
 import org.apache.olingo.server.api.uri.queryoption.expression.Expression;
@@ -42,6 +44,18 @@ public class EntityServiceImpl implements EntityService {
         FilterOption filterOption = (FilterOption) queryOptions.get("filterOption");
         SelectOption selectOption = (SelectOption) queryOptions.get("selectOption");
         ApplyOption applyOption = (ApplyOption) queryOptions.get("applyOption");
+        ExpandOption expandOption = (ExpandOption) queryOptions.get("expandOption");
+        List<ExpandItem> expandItems = expandOption.getExpandItems();
+        List<ExpandItem> nonCollectionExpandItems = new ArrayList<>();
+        for (ExpandItem expandItem:expandItems) {
+            UriResource uriResource = expandItem.getResourcePath().getUriResourceParts().get(0);
+            if (uriResource instanceof UriResourceNavigation) {
+                EdmNavigationProperty edmNavigationProperty = ((UriResourceNavigation) uriResource).getProperty();
+                if (!edmNavigationProperty.isCollection()) {
+                    nonCollectionExpandItems.add(expandItem);
+                }
+            }
+        }
         OdataExpressionVisitor expressionVisitor = new OdataExpressionVisitor(edmEntityType);
         String sql = "";
         SqlHolder sqlHolder = new SqlHolder(tableName);
@@ -61,12 +75,15 @@ public class EntityServiceImpl implements EntityService {
                 joinSql = expressionVisitor.getJoinSql();
                 sqlHolder.addJoin(joinSql);
                 groupBySql = expressionVisitor.getGroupBySql();
-                sqlHolder.addGroupBy(groupBySql);
+                if (groupBySql != null && !groupBySql.equals("")) {
+                    sqlHolder.addGroupBy(groupBySql);
+                }
             }
             if (applyOption != null) {
 //                applySql(edmEntityType, applyOption, sqlHolder);
             }
-            sql = sql + joinSql + conditionSql + groupBySql;
+//            sql = sql + joinSql + conditionSql + groupBySql;
+            sql = sqlHolder.getSql();
             Query<RowSet<Row>> query = pgClient.query(sql);
             Log.info(sql);
             Multi<QuarkEntity> quarkEntityMulti = query.execute()
