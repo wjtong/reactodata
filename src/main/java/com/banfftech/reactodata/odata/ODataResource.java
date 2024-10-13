@@ -173,7 +173,7 @@ public class ODataResource {
         // Return the response
         return Response.status(response.getStatusCode())
                 .entity(response.getContent())
-                .type(response.getHeader(HttpHeader.CONTENT_TYPE).toString())
+                .type(response.getHeader(HttpHeader.CONTENT_TYPE))
                 .build();
     }
 }
