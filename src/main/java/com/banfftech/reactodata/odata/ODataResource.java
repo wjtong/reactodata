@@ -37,11 +37,10 @@ public class ODataResource {
     @Context
     UriInfo uriInfo;
 
-    private static String serviceName = "CustRequestManage"; // should be from request path
     @GET
-    @Path("$metadata")
+    @Path("/{serviceName}/$metadata")
     @Produces(MediaType.APPLICATION_XML)
-    public Response getMetadata() {
+    public Response getMetadata(@PathParam("serviceName") String serviceName) {
         try {
             EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
             OData odata = OData.newInstance();
@@ -63,6 +62,7 @@ public class ODataResource {
     @Produces(MediaType.APPLICATION_XML)
     public Response getTestMetadata() {
         try {
+            String serviceName = extractServiceName();
             EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
             OData odata = OData.newInstance();
             ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
@@ -80,14 +80,15 @@ public class ODataResource {
     }
 
     @GET
-    @Path("/")
+    @Path("/{serviceName}/")
     public Response serviceRoot() {
         return Response.ok().build();
     }
 
     @GET
-    @Path("/{odataPath:.+}")
+    @Path("/{serviceName}/{odataPath:.+}")
     public Response processODataRequest(@PathParam("odataPath") String odataPath,
+                                        @PathParam("serviceName") String serviceName,
                                         @QueryParam("$filter") String filter,
                                         @QueryParam("$expand") String expand,
                                         @QueryParam("$select") String select,
@@ -105,7 +106,7 @@ public class ODataResource {
         request.setRawODataPath(odataPath);
         request.setRawServiceResolutionUri("/");
         request.setMethod(org.apache.olingo.commons.api.http.HttpMethod.valueOf(HttpMethod.GET));
-        request.setRawRequestUri(baseUri + "/" + odataPath + (queryString != null ? "?" + queryString : ""));
+        request.setRawRequestUri(baseUri + "/" + serviceName + "/" + odataPath + (queryString != null ? "?" + queryString : ""));
         request.setRawQueryPath(queryString);
 
         ODataResponse response = new ODataResponse();
@@ -155,6 +156,7 @@ public class ODataResource {
         ODataResponse response = new ODataResponse();
 
         try {
+            String serviceName = extractServiceName();
             EdmProvider edmProvider = new EdmProvider(edmConfigLoader, serviceName);
             OData odata = OData.newInstance();
             ServiceMetadata serviceMetadata = odata.createServiceMetadata(edmProvider, new ArrayList<>());
@@ -175,5 +177,14 @@ public class ODataResource {
                 .entity(response.getContent())
                 .type(response.getHeader(HttpHeader.CONTENT_TYPE))
                 .build();
+    }
+
+    private String extractServiceName() {
+        String path = uriInfo.getPath();
+        String[] segments = path.split("/");
+        if (segments.length > 1) {
+            return segments[1]; // Assuming the service name is the second segment
+        }
+        return "defaultServiceName"; // Fallback if not found
     }
 }
