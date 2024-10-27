@@ -307,5 +307,62 @@ public class EntityServiceImpl implements EntityService {
                 .flatMap(r -> pgClient.query("INSERT INTO order_item_fact VALUES ('9030', '9010', '0002', '9010', '9010', " +
                         "6, 540, 1)").execute())
                 .await().indefinitely();
+
+        // Add table creation for each model class with snake_case column names
+        pgClient.query("DROP TABLE IF EXISTS sms_validate_code").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE sms_validate_code (tel_number TEXT PRIMARY KEY, captcha TEXT, is_valid TEXT, from_date TIMESTAMP, thru_date TIMESTAMP)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS organization").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE organization (id TEXT PRIMARY KEY, name TEXT, url TEXT, is_default TEXT, settings TEXT)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS email_verification_token").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE email_verification_token (token_id TEXT PRIMARY KEY, user_login_id TEXT, token TEXT, expiration_date TIMESTAMP)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS api_keys").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE api_keys (id TEXT PRIMARY KEY, organization_id TEXT, api_key TEXT)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS pandas_user").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE pandas_user (id TEXT PRIMARY KEY, email TEXT, first_name TEXT, created_at TIMESTAMP, password TEXT, verified TEXT, last_name TEXT, features TEXT)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS connector").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE connector (id TEXT PRIMARY KEY, type TEXT, config TEXT, created_at TIMESTAMP, user_id TEXT)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS logs").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE logs (id TEXT PRIMARY KEY, user_id TEXT, api_key TEXT, created_at TIMESTAMP, query TEXT, execution_time DOUBLE PRECISION, success BOOLEAN, json_log TEXT)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS organization_membership").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE organization_membership (id TEXT PRIMARY KEY, user_id TEXT, organization_id TEXT, role TEXT, verified BOOLEAN)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS workspace").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE workspace (id TEXT PRIMARY KEY, name TEXT, user_id TEXT, organization_id TEXT, slug TEXT, created_at TIMESTAMP)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS dataset").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE dataset (id TEXT PRIMARY KEY, name TEXT, table_name TEXT, description TEXT, created_at TIMESTAMP, head TEXT, user_id TEXT, organization_id TEXT, connector_id TEXT, field_descriptions TEXT, filterable_columns TEXT)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS user_conversation").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE user_conversation (id TEXT PRIMARY KEY, workspace_id TEXT, user_id TEXT, created_at TIMESTAMP, valid BOOLEAN)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS user_space").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE user_space (workspace_id TEXT, user_id TEXT, PRIMARY KEY (workspace_id, user_id))").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS conversation_message").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE conversation_message (id TEXT PRIMARY KEY, conversation_id TEXT, created_at TIMESTAMP, query TEXT, response TEXT, code_generated TEXT, label TEXT, log_id TEXT, settings TEXT)").execute())
+                .await().indefinitely();
+
+        pgClient.query("DROP TABLE IF EXISTS dataset_space").execute()
+                .flatMap(r -> pgClient.query("CREATE TABLE dataset_space (id TEXT PRIMARY KEY, dataset_id TEXT, workspace_id TEXT)").execute())
+                .await().indefinitely();
     }
 }
