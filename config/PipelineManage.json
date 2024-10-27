@@ -1,0 +1,18 @@
+{
+    "service-name": "custRequestManage",
+    "name-space": "com.banfftech",
+    "entity-types": [
+      {
+        "entity-name": "Connector"
+      },
+      {
+        "entity-name": "Dataset"
+      },
+      {
+        "entity-name": "Workspace"
+      },
+      {
+        "entity-name": "DatasetSpace"
+      }
+    ]
+}
