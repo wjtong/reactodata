@@ -24,14 +24,24 @@ public class SqlHolder {
             whereSql += " and " + condition;
         }
     }
+    
     public void addJoin(String join) {
         joinSql += " " + join;
     }
+    
     public void addGroupBy(String groupBy) {
         if (groupBySql == null || groupBySql.equals("")) {
             groupBySql = " group by " + groupBy;
         } else {
             groupBySql += " " + groupBy;
+        }
+    }
+
+    public void addOrderBy(String orderBy) {
+        if (orderBySql == null || orderBySql.equals("")) {
+            orderBySql = " order by " + orderBy;
+        } else {
+            orderBySql += ", " + orderBy;
         }
     }
 
